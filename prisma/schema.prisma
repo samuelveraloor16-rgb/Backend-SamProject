@@ -1,0 +1,271 @@
+// SamProject - Schema inicial (Fase 1)
+// PostgreSQL + Prisma. IDs cuid(). Fechas ISO 8601 en la API.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RolEspacio {
+  ADMINISTRADOR
+  MIEMBRO
+}
+
+enum EstadoTarea {
+  PENDIENTE
+  EN_CURSO
+  HECHA
+}
+
+enum PrioridadTarea {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum TipoNotificacion {
+  TAREA_ASIGNADA
+  TAREA_POR_VENCER
+  TAREA_VENCIDA
+  COMENTARIO
+  MENCION
+  INVITACION
+  SISTEMA
+}
+
+model Usuario {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  nombre            String
+  fotoUrl           String?
+  passwordHash      String
+  /// Versiona los tokens JWT: al incrementarlo, los tokens emitidos antes quedan inválidos (logout / cambio de contraseña).
+  tokenVersion      Int       @default(0)
+  /// HASH (sha256) del token de recuperación; nunca se persiste el token plano.
+  resetTokenHash    String?
+  resetTokenExpires DateTime?
+  creadoEn          DateTime  @default(now())
+  actualizadoEn     DateTime  @updatedAt
+
+  membresias        Membresia[]
+  tareasAsignadas   Tarea[]             @relation("Responsable")
+  comentarios       Comentario[]
+  adjuntos          Adjunto[]
+  notificaciones    Notificacion[]
+  registros         RegistroDeCambios[]
+  proyectosMiembro  ProyectoMiembro[]
+  invitacionesCreadas Invitacion[]      @relation("InvitadoPor")
+
+  @@map("usuarios")
+}
+
+model EspacioDeTrabajo {
+  id              String   @id @default(cuid())
+  nombre          String
+  esPersonal      Boolean  @default(false)
+  /// RF-08 / RF-32: el administrador del espacio puede desactivar el asistente de IA.
+  asistenteActivo Boolean  @default(true)
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+
+  membresias      Membresia[]
+  proyectos       Proyecto[]
+  etiquetas       Etiqueta[]
+  invitaciones    Invitacion[]
+
+  @@map("espacios_de_trabajo")
+}
+
+model Membresia {
+  id        String     @id @default(cuid())
+  usuarioId String
+  espacioId String
+  rol       RolEspacio @default(MIEMBRO)
+  creadoEn  DateTime   @default(now())
+
+  usuario   Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  espacio   EspacioDeTrabajo @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, espacioId])
+  @@index([espacioId])
+  @@map("membresias")
+}
+
+/// RF-06: invitación por correo a un espacio. Se guarda HASH del token, nunca el token plano.
+model Invitacion {
+  id           String     @id @default(cuid())
+  tokenHash    String     @unique
+  email        String
+  rol          RolEspacio @default(MIEMBRO)
+  espacioId    String
+  invitadoPorId String?
+  expiraEn     DateTime
+  aceptadaEn   DateTime?
+  creadoEn     DateTime   @default(now())
+
+  espacio      EspacioDeTrabajo @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  invitadoPor  Usuario?         @relation("InvitadoPor", fields: [invitadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([espacioId])
+  @@index([email])
+  @@map("invitaciones")
+}
+
+model Proyecto {
+  id                 String    @id @default(cuid())
+  nombre             String
+  descripcion        String?
+  fechaInicio        DateTime?
+  fechaFin           DateTime?
+  archivado          Boolean   @default(false)
+  esBandejaDeEntrada Boolean   @default(false)
+  espacioId          String
+  creadoEn           DateTime  @default(now())
+  actualizadoEn      DateTime  @updatedAt
+  /// Borrado lógico opcional: si se elimina, se rellena en vez de borrar el registro físicamente.
+  eliminadoEn        DateTime?
+
+  espacio            EspacioDeTrabajo @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  tareas             Tarea[]
+  miembros           ProyectoMiembro[]
+
+  @@index([espacioId])
+  @@map("proyectos")
+}
+
+/// RF-10: miembros de un proyecto (además de los miembros del espacio).
+model ProyectoMiembro {
+  id         String   @id @default(cuid())
+  proyectoId String
+  usuarioId  String
+  creadoEn   DateTime @default(now())
+
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([proyectoId, usuarioId])
+  @@map("proyecto_miembros")
+}
+
+model Tarea {
+  id                String         @id @default(cuid())
+  titulo            String
+  descripcion       String?
+  estado            EstadoTarea    @default(PENDIENTE)
+  prioridad         PrioridadTarea @default(MEDIA)
+  fechaLimite       DateTime?
+  /// Se establece al pasar a HECHA; necesaria para el cálculo de ritmo (RF-22/RF-25).
+  fechaFinalizacion DateTime?
+  proyectoId        String
+  responsableId     String?
+  tareaPadreId      String?
+  creadoEn          DateTime       @default(now())
+  actualizadoEn     DateTime       @updatedAt
+
+  proyecto          Proyecto       @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  responsable       Usuario?       @relation("Responsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  tareaPadre        Tarea?         @relation("Subtareas", fields: [tareaPadreId], references: [id], onDelete: Cascade)
+  subtareas         Tarea[]        @relation("Subtareas")
+  etiquetas         TareaEtiqueta[]
+  comentarios       Comentario[]
+  adjuntos          Adjunto[]
+
+  @@index([proyectoId, estado])
+  @@index([responsableId])
+  @@index([tareaPadreId])
+  @@map("tareas")
+}
+
+model Etiqueta {
+  id        String   @id @default(cuid())
+  nombre    String
+  color     String?
+  espacioId String
+  creadoEn  DateTime @default(now())
+
+  espacio   EspacioDeTrabajo @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  tareas    TareaEtiqueta[]
+
+  @@unique([nombre, espacioId])
+  @@map("etiquetas")
+}
+
+model TareaEtiqueta {
+  tareaId    String
+  etiquetaId String
+
+  tarea      Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  etiqueta   Etiqueta @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+
+  @@id([tareaId, etiquetaId])
+  @@map("tarea_etiquetas")
+}
+
+model Comentario {
+  id            String   @id @default(cuid())
+  texto         String
+  tareaId       String
+  autorId       String
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  tarea         Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  autor         Usuario  @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([tareaId])
+  @@map("comentarios")
+}
+
+model Adjunto {
+  id            String   @id @default(cuid())
+  nombreArchivo String
+  url           String
+  mimeType      String?
+  tamanoBytes   Int?
+  tareaId       String
+  subidoPorId   String
+  creadoEn      DateTime @default(now())
+
+  tarea         Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  subidoPor     Usuario  @relation(fields: [subidoPorId], references: [id], onDelete: Cascade)
+
+  @@index([tareaId])
+  @@map("adjuntos")
+}
+
+model Notificacion {
+  id        String            @id @default(cuid())
+  usuarioId String
+  tipo      TipoNotificacion  @default(SISTEMA)
+  titulo    String
+  cuerpo    String?
+  leida     Boolean           @default(false)
+  datos     Json?
+  creadoEn  DateTime          @default(now())
+
+  usuario   Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, leida])
+  @@map("notificaciones")
+}
+
+/// RF-34: historial de cambios, solo lectura para el AdminWeb.
+model RegistroDeCambios {
+  id        String   @id @default(cuid())
+  entidad   String
+  entidadId String
+  accion    String
+  detalle   Json?
+  usuarioId String?
+  creadoEn  DateTime @default(now())
+
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([entidad, entidadId])
+  @@index([usuarioId])
+  @@map("registro_de_cambios")
+}
