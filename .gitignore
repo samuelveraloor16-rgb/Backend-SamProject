@@ -1,0 +1,27 @@
+# Dependencias
+node_modules/
+
+# Compilados
+dist/
+build/
+*.tsbuildinfo
+
+# Variables de entorno y secretos
+.env
+.env.local
+.env.*.local
+
+# Cobertura y logs
+coverage/
+*.log
+npm-debug.log*
+
+# Prisma
+prisma/*.db
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
