@@ -7,20 +7,24 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthService } from './aplicacion/auth/auth.service';
 import { PerfilService } from './aplicacion/perfil/perfil.service';
 import { EspaciosService } from './aplicacion/espacios/espacios.service';
+import { ProyectosService } from './aplicacion/proyectos/proyectos.service';
 import { PrismaModule } from './infraestructura/prisma/prisma.module';
 import { PrismaUsuarioRepository } from './infraestructura/repositorios/prisma-usuario.repository';
 import { PrismaEspacioRepository } from './infraestructura/repositorios/prisma-espacio.repository';
+import { PrismaProyectoRepository } from './infraestructura/repositorios/prisma-proyecto.repository';
 import { BcryptPasswordHasher } from './infraestructura/seguridad/bcrypt-password-hasher';
 import { JwtTokenService } from './infraestructura/seguridad/jwt-token.service';
 import { SmtpMailer } from './infraestructura/correo/smtp-mailer';
 import { AuthController } from './interfaces/http/auth.controller';
 import { PerfilController } from './interfaces/http/perfil.controller';
 import { EspaciosController, InvitacionesController } from './interfaces/http/espacios.controller';
+import { ProyectosController } from './interfaces/http/proyectos.controller';
 import { JwtStrategy } from './interfaces/http/jwt.strategy';
 import {
   USUARIO_REPOSITORY,
 } from './dominio/puertos/usuario.repository';
 import { ESPACIO_REPOSITORY } from './dominio/puertos/espacio.repository';
+import { PROYECTO_REPOSITORY } from './dominio/puertos/proyecto.repository';
 import { PASSWORD_HASHER } from './dominio/puertos/password-hasher.port';
 import { TOKEN_SERVICE } from './dominio/puertos/token-service.port';
 import { MAILER } from './dominio/puertos/mailer.port';
@@ -40,14 +44,16 @@ import { MAILER } from './dominio/puertos/mailer.port';
     }),
     PrismaModule,
   ],
-  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController],
+  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController],
   providers: [
     AuthService,
     PerfilService,
     EspaciosService,
+    ProyectosService,
     JwtStrategy,
     { provide: USUARIO_REPOSITORY, useClass: PrismaUsuarioRepository },
     { provide: ESPACIO_REPOSITORY, useClass: PrismaEspacioRepository },
+    { provide: PROYECTO_REPOSITORY, useClass: PrismaProyectoRepository },
     { provide: PASSWORD_HASHER, useClass: BcryptPasswordHasher },
     { provide: TOKEN_SERVICE, useClass: JwtTokenService },
     { provide: MAILER, useClass: SmtpMailer },
