@@ -71,6 +71,8 @@ export interface DatosActualizarTarea {
 }
 
 export interface TareaRepository {
+  /** RF-18: tareas (NO subtareas) con fechaLimite dentro de la ventana, de proyectos NO archivados del espacio (la Bandeja de entrada se incluye). */
+  listarCalendario(espacioId: string, rango: RangoCalendarioConsulta): Promise<TareaCompleta[]>;
   /** Aplica filtros en BD y devuelve TODAS las coincidencias sin ordenar (el servicio ordena y pagina). */
   listar(proyectoId: string, filtros: FiltrosTareas): Promise<TareaCompleta[]>;
   buscarPorId(id: string): Promise<TareaCompleta | null>;
@@ -81,6 +83,12 @@ export interface TareaRepository {
   eliminar(id: string): Promise<void>;
   /** Mueve la tarea y sus subtareas al proyecto destino (mismo espacio, validado en servicio). */
   moverConSubtareas(tareaId: string, destinoProyectoId: string): Promise<void>;
+}
+
+/** Ventana efectiva del calendario (RF-18). `null` = sin límite en ese extremo. */
+export interface RangoCalendarioConsulta {
+  desde: Date | null;
+  hasta: Date | null;
 }
 
 export const TAREA_REPOSITORY = Symbol('TAREA_REPOSITORY');

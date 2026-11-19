@@ -101,6 +101,7 @@ describe('TareasService', () => {
 
   beforeEach(async () => {
     tareas = {
+      listarCalendario: jest.fn().mockResolvedValue([]),
       listar: jest.fn().mockResolvedValue([]),
       buscarPorId: jest.fn(),
       listarSubtareas: jest.fn().mockResolvedValue([]),

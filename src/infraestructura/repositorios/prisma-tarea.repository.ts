@@ -8,6 +8,7 @@ import type {
   FiltrosTareas,
   EstadoTarea,
   PrioridadTarea,
+  RangoCalendarioConsulta,
 } from '../../dominio/puertos/tarea.repository';
 import { inicioDelDia } from '../../dominio/metricas/progreso';
 import { PrismaService } from '../prisma/prisma.service';
@@ -56,9 +57,41 @@ function aCompleta(t: FilaCompleta): TareaCompleta {
   };
 }
 
+/** RF-18: WHERE del calendario — sin subtareas, proyectos NO archivados del espacio (la Bandeja se incluye). Exportado para tests. */
+export function construirWhereCalendario(
+  espacioId: string,
+  rango: RangoCalendarioConsulta,
+): Prisma.TareaWhereInput {
+  return {
+    tareaPadreId: null,
+    proyecto: { espacioId, archivado: false },
+    // Con ambos extremos abiertos se exige al menos fechaLimite presente: una tarea sin
+    // fecha límite no tiene lugar en un calendario.
+    ...(rango.desde || rango.hasta
+      ? {
+          fechaLimite: {
+            ...(rango.desde ? { gte: rango.desde } : {}),
+            ...(rango.hasta ? { lte: rango.hasta } : {}),
+          },
+        }
+      : { fechaLimite: { not: null } }),
+  };
+}
+
 @Injectable()
 export class PrismaTareaRepository implements TareaRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async listarCalendario(
+    espacioId: string,
+    rango: RangoCalendarioConsulta,
+  ): Promise<TareaCompleta[]> {
+    const filas = await this.prisma.tarea.findMany({
+      where: construirWhereCalendario(espacioId, rango),
+      include: INCLUDE_COMPLETA,
+    });
+    return filas.map((f) => aCompleta(f as FilaCompleta));
+  }
 
   async listar(proyectoId: string, filtros: FiltrosTareas): Promise<TareaCompleta[]> {
     const hoy = inicioDelDia();

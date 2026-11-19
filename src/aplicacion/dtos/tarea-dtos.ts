@@ -54,6 +54,18 @@ export class ListarTareasQueryDto extends PaginacionDto {
   direccion?: 'asc' | 'desc';
 }
 
+export class CalendarioQueryDto extends PaginacionDto {
+  /** RF-18: YYYY-MM-DD o el literal `null` (sin límite inferior). Omitido → ver default de 90 días. */
+  @IsOptional()
+  @Matches(/^(\d{4}-\d{2}-\d{2}|null)$/, { message: 'desde debe ser YYYY-MM-DD o null' })
+  desde?: string;
+
+  /** RF-18: YYYY-MM-DD o el literal `null` (sin límite superior). Omitido → ver default de 90 días. */
+  @IsOptional()
+  @Matches(/^(\d{4}-\d{2}-\d{2}|null)$/, { message: 'hasta debe ser YYYY-MM-DD o null' })
+  hasta?: string;
+}
+
 export class CrearTareaDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString({ message: 'El título es obligatorio' })

@@ -16,6 +16,10 @@ import {
   type RolEspacio,
 } from '../../dominio/puertos/espacio.repository';
 import {
+  TAREA_REPOSITORY,
+  type TareaRepository,
+} from '../../dominio/puertos/tarea.repository';
+import {
   USUARIO_REPOSITORY,
   type UsuarioRepository,
 } from '../../dominio/puertos/usuario.repository';
@@ -23,12 +27,15 @@ import { MAILER, type Mailer } from '../../dominio/puertos/mailer.port';
 import { sha256Hex } from '../auth/auth.service';
 import { asegurarAdministrador, asegurarMiembro } from '../comun/acceso-espacio';
 import { envelope, paginarEnMemoria, type Envelope, type PaginacionDto } from '../comun/paginacion';
+import { resolverRangoCalendario } from '../comun/calendario-rango';
+import { aTareaPublica, ordenarTareas, type TareaPublica } from '../tareas/tareas.service';
 import {
   CrearEspacioDto,
   ActualizarEspacioDto,
   CrearInvitacionDto,
   ActualizarRolDto,
 } from '../dtos/espacio-dtos';
+import type { CalendarioQueryDto } from '../dtos/tarea-dtos';
 
 export interface EspacioPublico {
   id: string;
@@ -64,10 +71,51 @@ export class EspaciosService {
 
   constructor(
     @Inject(ESPACIO_REPOSITORY) private readonly espacios: EspacioRepository,
+    @Inject(TAREA_REPOSITORY) private readonly tareas: TareaRepository,
     @Inject(USUARIO_REPOSITORY) private readonly usuarios: UsuarioRepository,
     @Inject(MAILER) private readonly mailer: Mailer,
     private readonly config: ConfigService,
   ) {}
+
+  // RF-18: calendario del espacio. Tareas (NO subtareas) de proyectos no archivados
+  // (Bandeja incluida) con fechaLimite en la ventana [desde, hasta]. Miembro → 404 si no.
+  async calendario(
+    espacioId: string,
+    usuarioId: string,
+    query: CalendarioQueryDto,
+  ): Promise<
+    Envelope<TareaPublica> & {
+      meta: Envelope<TareaPublica>['meta'] & {
+        desde: string | null;
+        hasta: string | null;
+        totalDePorTareas: number;
+      };
+    }
+  > {
+    await asegurarMiembro(this.espacios, espacioId, usuarioId); // ajeno → 404
+    const rango = resolverRangoCalendario(query.desde, query.hasta);
+    const filas = await this.tareas.listarCalendario(espacioId, {
+      desde: rango.desde,
+      hasta: rango.hasta,
+    });
+    const ordenadas = ordenarTareas(filas, 'fechaLimite', 'asc');
+    const corte = paginarEnMemoria(ordenadas, query.page, query.pageSize);
+    const env = envelope(
+      corte.datos.map(aTareaPublica),
+      corte.total,
+      query.page,
+      query.pageSize,
+    );
+    return {
+      datos: env.datos,
+      meta: {
+        ...env.meta,
+        desde: rango.desdeStr,
+        hasta: rango.hastaStr,
+        totalDePorTareas: corte.total,
+      },
+    };
+  }
 
   // RF-05/RF-06: lista los espacios del usuario. Personales primero, luego por creadoEn.
   async listar(usuarioId: string, page: PaginacionDto): Promise<Envelope<EspacioPublico>> {

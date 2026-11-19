@@ -19,6 +19,7 @@ import {
   CrearEspacioDto,
   CrearInvitacionDto,
 } from '../../aplicacion/dtos/espacio-dtos';
+import { CalendarioQueryDto } from '../../aplicacion/dtos/tarea-dtos';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser, type UsuarioAutenticado } from './current-user.decorator';
 
@@ -37,6 +38,16 @@ export class EspaciosController {
   @Post()
   crear(@CurrentUser() usuario: UsuarioAutenticado, @Body() dto: CrearEspacioDto) {
     return this.espacios.crear(usuario.id, dto);
+  }
+
+  // RF-18: calendario del espacio (RF-18). Miembro del espacio; ?desde & ?hasta en YYYY-MM-DD.
+  @Get(':espacioId/calendario')
+  calendario(
+    @CurrentUser() usuario: UsuarioAutenticado,
+    @Param('espacioId') espacioId: string,
+    @Query() query: CalendarioQueryDto,
+  ) {
+    return this.espacios.calendario(espacioId, usuario.id, query);
   }
 
   @Get(':id')

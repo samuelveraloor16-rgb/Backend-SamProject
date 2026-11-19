@@ -18,6 +18,10 @@ import {
   USUARIO_REPOSITORY,
   type UsuarioRepository,
 } from '../../dominio/puertos/usuario.repository';
+import {
+  TAREA_REPOSITORY,
+  type TareaRepository,
+} from '../../dominio/puertos/tarea.repository';
 import { MAILER, type Mailer } from '../../dominio/puertos/mailer.port';
 
 function espacio(parcial: Partial<EspacioEntity> = {}): EspacioEntity {
@@ -61,6 +65,7 @@ function invitacion(parcial: Partial<InvitacionEntity> = {}): InvitacionEntity {
 describe('EspaciosService', () => {
   let service: EspaciosService;
   let espacios: jest.Mocked<EspacioRepository>;
+  let tareas: jest.Mocked<TareaRepository>;
   let usuarios: jest.Mocked<UsuarioRepository>;
   let mailer: jest.Mocked<Mailer>;
 
@@ -80,6 +85,16 @@ describe('EspaciosService', () => {
       actualizarRolMembresia: jest.fn(),
       eliminarMembresia: jest.fn(),
     };
+    tareas = {
+      listarCalendario: jest.fn().mockResolvedValue([]),
+      listar: jest.fn().mockResolvedValue([]),
+      buscarPorId: jest.fn(),
+      listarSubtareas: jest.fn().mockResolvedValue([]),
+      crear: jest.fn(),
+      actualizar: jest.fn(),
+      eliminar: jest.fn(),
+      moverConSubtareas: jest.fn(),
+    };
     usuarios = {
       buscarPorEmail: jest.fn(),
       buscarPorId: jest.fn(),
@@ -97,6 +112,7 @@ describe('EspaciosService', () => {
       providers: [
         EspaciosService,
         { provide: ESPACIO_REPOSITORY, useValue: espacios },
+        { provide: TAREA_REPOSITORY, useValue: tareas },
         { provide: USUARIO_REPOSITORY, useValue: usuarios },
         { provide: MAILER, useValue: mailer },
         { provide: ConfigService, useValue: { get: () => undefined } },
