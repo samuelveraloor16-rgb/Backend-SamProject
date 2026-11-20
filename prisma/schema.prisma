@@ -59,6 +59,8 @@ model Usuario {
   registros         RegistroDeCambios[]
   proyectosMiembro  ProyectoMiembro[]
   invitacionesCreadas Invitacion[]      @relation("InvitadoPor")
+  menciones         Mencion[]
+  idempotencias     IdempotenciaComentario[]
 
   @@map("usuarios")
 }
@@ -215,6 +217,9 @@ model Comentario {
 
   tarea         Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
   autor         Usuario  @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  menciones     Mencion[]
+  notificaciones Notificacion[]
+  idempotencias IdempotenciaComentario[]
 
   @@index([tareaId])
   @@map("comentarios")
@@ -246,11 +251,38 @@ model Notificacion {
   leida     Boolean           @default(false)
   datos     Json?
   creadoEn  DateTime          @default(now())
+  comentarioId String?
 
   usuario   Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  comentario Comentario?      @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, leida])
+  @@unique([comentarioId, usuarioId, tipo])
   @@map("notificaciones")
+}
+
+model Mencion {
+  comentarioId String
+  usuarioId String
+  posicion Int
+  comentario Comentario @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@id([comentarioId, usuarioId])
+  @@map("menciones")
+}
+
+model IdempotenciaComentario {
+  usuarioId String
+  clave String
+  huella String
+  generacion String?
+  comentarioId String?
+  expiraEn DateTime
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  comentario Comentario? @relation(fields: [comentarioId], references: [id], onDelete: SetNull)
+  @@id([usuarioId, clave])
+  @@index([expiraEn])
+  @@map("idempotencias_comentario")
 }
 
 /// RF-34: historial de cambios, solo lectura para el AdminWeb.

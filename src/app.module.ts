@@ -10,6 +10,10 @@ import { EspaciosService } from './aplicacion/espacios/espacios.service';
 import { ProyectosService } from './aplicacion/proyectos/proyectos.service';
 import { TareasService } from './aplicacion/tareas/tareas.service';
 import { EtiquetasService } from './aplicacion/etiquetas/etiquetas.service';
+import { ComentariosService } from './aplicacion/comentarios/comentarios.service';
+import { PrismaComentariosRepository } from './infraestructura/repositorios/prisma-comentarios.repository';
+import { ComentariosController } from './interfaces/http/comentarios.controller';
+import { COMENTARIOS_REPOSITORY } from './dominio/puertos/comentarios.repository';
 import { PrismaModule } from './infraestructura/prisma/prisma.module';
 import { PrismaUsuarioRepository } from './infraestructura/repositorios/prisma-usuario.repository';
 import { PrismaEspacioRepository } from './infraestructura/repositorios/prisma-espacio.repository';
@@ -52,7 +56,7 @@ import { MAILER } from './dominio/puertos/mailer.port';
     }),
     PrismaModule,
   ],
-  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController],
+  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController],
   providers: [
     AuthService,
     PerfilService,
@@ -60,6 +64,8 @@ import { MAILER } from './dominio/puertos/mailer.port';
     ProyectosService,
     TareasService,
     EtiquetasService,
+    ComentariosService,
+    { provide: COMENTARIOS_REPOSITORY, useClass: PrismaComentariosRepository },
     JwtStrategy,
     { provide: USUARIO_REPOSITORY, useClass: PrismaUsuarioRepository },
     { provide: ESPACIO_REPOSITORY, useClass: PrismaEspacioRepository },

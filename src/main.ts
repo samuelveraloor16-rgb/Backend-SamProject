@@ -9,7 +9,7 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet());
   const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()) ?? true;
-  app.enableCors({ origin: corsOrigin });
+  app.enableCors({ origin: corsOrigin, exposedHeaders: ['Idempotency-Replayed'] });
 
   // Base URL de la API: /api/v1 (ver docs/orquestacion/CONTRATO_API.md)
   app.setGlobalPrefix('api/v1');

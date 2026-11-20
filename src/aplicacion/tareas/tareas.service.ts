@@ -27,7 +27,7 @@ import {
 } from '../../dominio/puertos/espacio.repository';
 import { asegurarMiembro } from '../comun/acceso-espacio';
 import { esVencida } from '../../dominio/metricas/progreso';
-import { envelope, paginarEnMemoria, type Envelope, type PaginacionDto } from '../comun/paginacion';
+import { envelope, paginarEnMemoria, type Envelope } from '../comun/paginacion';
 import {
   ActualizarTareaDto,
   CambiarEstadoDto,
@@ -92,7 +92,7 @@ export function ordenarTareas(
   const dir = direccion ?? (orden === 'fechaLimite' ? 'asc' : 'desc');
   const signo = dir === 'asc' ? 1 : -1;
   return [...tareas].sort((a, b) => {
-    let cmp = 0;
+    let cmp: number;
     if (orden === 'fechaLimite') {
       const va = a.fechaLimite?.getTime() ?? null;
       const vb = b.fechaLimite?.getTime() ?? null;
