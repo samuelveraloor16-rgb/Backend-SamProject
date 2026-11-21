@@ -14,6 +14,9 @@ import { AppModule } from '../../app.module';
 import { conErroresTransitorios } from '../prisma/errores-transitorios';
 import { HttpExceptionFilter } from '../../interfaces/http/http-exception.filter';
 import { ejecutarLimpieza } from '../mantenimiento/limpiar-idempotencias';
+import { PrismaTareaRepository } from './prisma-tarea.repository';
+import { PrismaProyectoRepository } from './prisma-proyecto.repository';
+import { calcularProgreso } from '../../dominio/metricas/progreso';
 
 // Opt-in: crea y elimina exclusivamente una BD de nombre aleatorio generado aquí.
 const integration = process.env.RF19_INTEGRATION === '1' ? describe : describe.skip;
@@ -75,6 +78,165 @@ integration('RF-19 PostgreSQL aislado', () => {
     if (previousKeys === undefined) delete process.env.COMENTARIOS_HMAC_CLAVES; else process.env.COMENTARIOS_HMAC_CLAVES = previousKeys;
     if (previousActive === undefined) delete process.env.COMENTARIOS_HMAC_CLAVE_ACTIVA; else process.env.COMENTARIOS_HMAC_CLAVE_ACTIVA = previousActive;
   });
+  it('C-03 conserva jerarquía, progreso y cascadas al mover; rechaza accesos y movimiento de hija', async () => {
+    const tr = new PrismaTareaRepository(prisma);
+    const pr = new PrismaProyectoRepository(prisma);
+    await prisma.tarea.create({ data: { id: 'c03_p', titulo: 'Padre', proyectoId: ids.proyecto } });
+    await prisma.tarea.create({ data: { id: 'c03_h', titulo: 'Hija', proyectoId: ids.proyecto, tareaPadreId: 'c03_p', estado: 'HECHA' } });
+    const c = await repo.crear('c03_h', ids.a, 'c03', 'c03', [ids.b]);
+    const comentarioId = (c.comentario as { id: string }).id;
+    await expect(tr.moverConSubtareas('c03_h', ids.destino, ids.otro)).rejects.toMatchObject({ status: 404 });
+    await expect(tr.moverConSubtareas('c03_h', ids.destino, ids.a)).rejects.toMatchObject({ status: 400 });
+    await tr.moverConSubtareas('c03_h', ids.proyecto, ids.a);
+    await tr.moverConSubtareas('c03_p', ids.destino, ids.a);
+    expect((await prisma.tarea.findUniqueOrThrow({ where: { id: 'c03_h' } })).proyectoId).toBe(ids.destino);
+    expect(calcularProgreso(await pr.tareasContables(ids.destino))).toMatchObject({ total: 1, hechas: 1, progreso: 100 });
+    expect((await repo.notificaciones(ids.b, 1, 100)).datos.find(n => n.datos.comentarioId === comentarioId)?.datos.proyectoId).toBe(ids.destino);
+    await prisma.tarea.delete({ where: { id: 'c03_p' } });
+    expect(await prisma.comentario.count({ where: { id: comentarioId } })).toBe(0);
+    expect(await prisma.notificacion.count({ where: { comentarioId } })).toBe(0);
+    expect(await prisma.mencion.count({ where: { comentarioId } })).toBe(0);
+  });
+  it('C-04 rechaza miembro ajeno o actor sin acceso sin modificar proyecto ni miembros', async () => {
+    const pr = new PrismaProyectoRepository(prisma);
+    await prisma.proyecto.create({ data: { id: 'c04_p', nombre: 'Original', espacioId: ids.espacio, miembros: { create: { usuarioId: ids.a } } } });
+    await expect(pr.actualizarAutorizado('c04_p', ids.a, { nombre: 'Cambio' }, [ids.otro])).rejects.toMatchObject({ status: 400 });
+    await expect(pr.actualizarAutorizado('c04_p', ids.otro, { nombre: 'Cambio' }, [ids.b])).rejects.toMatchObject({ status: 404 });
+    expect(await pr.buscarPorId('c04_p')).toMatchObject({ nombre: 'Original', miembros: [{ id: ids.a }] });
+    const cliente = new Client({ connectionString: dbUrl });
+    await cliente.connect();
+    try {
+      await cliente.query(`CREATE FUNCTION c04_falla() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."proyectoId" = 'c04_p' THEN RAISE EXCEPTION 'fallo de prueba'; END IF; RETURN NEW; END $$`);
+      await cliente.query('CREATE TRIGGER c04_falla BEFORE INSERT ON proyecto_miembros FOR EACH ROW EXECUTE FUNCTION c04_falla()');
+      await expect(pr.actualizarAutorizado('c04_p', ids.a, { nombre: 'No guardar' }, [ids.b])).rejects.toThrow();
+      expect(await pr.buscarPorId('c04_p')).toMatchObject({ nombre: 'Original', miembros: [{ id: ids.a }] });
+    } finally {
+      await cliente.query('DROP TRIGGER IF EXISTS c04_falla ON proyecto_miembros');
+      await cliente.query('DROP FUNCTION IF EXISTS c04_falla()');
+      await cliente.end();
+    }
+    expect(await pr.actualizarAutorizado('c04_p', ids.a, { nombre: 'Cambio' }, [ids.b])).toMatchObject({ nombre: 'Cambio', miembros: [{ id: ids.b }] });
+    await prisma.proyecto.delete({ where: { id: 'c04_p' } });
+  });
+  it('PATCH HTTP rechaza null en nombre y miembros sin efectos y admite null en fechas y descripción', async () => {
+    await prisma.proyecto.create({ data: {
+      id: 'c04_http', nombre: 'Original', descripcion: 'Descripción', espacioId: ids.espacio,
+      fechaInicio: new Date('2026-01-01T00:00:00Z'), fechaFin: new Date('2026-02-01T00:00:00Z'),
+      miembros: { create: { usuarioId: ids.a } },
+    } });
+    const token = app.get(JwtService).sign({ sub: ids.a, tokenVersion: 0 });
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+    const pr = new PrismaProyectoRepository(prisma);
+    const original = await pr.buscarPorId('c04_http');
+    for (const body of [
+      { nombre: null },
+      { miembros: null },
+      { nombre: null, miembros: [ids.b], descripcion: 'No guardar' },
+      { nombre: 'No guardar', miembros: null, fechaInicio: null },
+    ]) {
+      await request(server).patch('/api/v1/proyectos/c04_http').auth(token, { type: 'bearer' }).send(body).expect(400);
+      expect(await pr.buscarPorId('c04_http')).toEqual(original);
+    }
+    await request(server).patch('/api/v1/proyectos/c04_http').auth(token, { type: 'bearer' })
+      .send({ descripcion: null, fechaInicio: null, fechaFin: null }).expect(200);
+    expect(await pr.buscarPorId('c04_http')).toMatchObject({
+      nombre: 'Original', descripcion: null, fechaInicio: null, fechaFin: null, miembros: [{ id: ids.a }],
+    });
+    await prisma.proyecto.delete({ where: { id: 'c04_http' } });
+  });
+  it('C-03 serializa movimiento y altas simultáneas sin separar padre e hijas', async () => {
+    const tr = new PrismaTareaRepository(prisma);
+    await prisma.tarea.create({ data: { id: 'c03_race', titulo: 'Padre', proyectoId: ids.proyecto } });
+    const resultados = await Promise.allSettled([
+      tr.moverConSubtareas('c03_race', ids.destino, ids.a),
+      ...Array.from({ length: 8 }, (_, i) => tr.crearSubtareaAutorizada({ titulo: `Hija ${i}`, prioridad: 'MEDIA', proyectoId: ids.proyecto, tareaPadreId: 'c03_race', etiquetasIds: [] }, ids.a)),
+    ]);
+    expect(resultados[0]?.status).toBe('fulfilled');
+    for (const resultado of resultados.slice(1)) {
+      if (resultado.status === 'rejected') expect(resultado.reason).toMatchObject({ status: 503 });
+    }
+    expect(await prisma.tarea.count({ where: { tareaPadreId: 'c03_race', proyectoId: { not: ids.destino } } })).toBe(0);
+    await prisma.tarea.delete({ where: { id: 'c03_race' } });
+  });
+  it.each(['alta-primero', 'mover-primero'])('C-03 fuerza el orden %s', async orden => {
+    const tr = new PrismaTareaRepository(prisma);
+    const cliente = new Client({ connectionString: dbUrl });
+    await cliente.connect();
+    const key = orden === 'alta-primero' ? 940031 : 940032;
+    const parent = `c03_${orden}`;
+    await prisma.tarea.create({ data: { id: parent, titulo: 'Padre', proyectoId: ids.proyecto } });
+    const pid = (await cliente.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!.pid;
+    try {
+      await cliente.query(`CREATE FUNCTION c03_barrera() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF (TG_OP = 'INSERT' AND NEW."tareaPadreId" = '${parent}') OR (TG_OP = 'UPDATE' AND NEW.id = '${parent}') THEN PERFORM pg_advisory_xact_lock(${key}); END IF; RETURN NEW; END $$`);
+      await cliente.query(`CREATE TRIGGER c03_barrera BEFORE ${orden === 'alta-primero' ? 'INSERT' : 'UPDATE'} ON tareas FOR EACH ROW EXECUTE FUNCTION c03_barrera()`);
+      await cliente.query('SELECT pg_advisory_lock($1)', [key]);
+      const crear = () => tr.crearSubtareaAutorizada({ titulo: 'Hija', prioridad: 'MEDIA', proyectoId: ids.proyecto, tareaPadreId: parent, etiquetasIds: [] }, ids.a);
+      const mover = () => tr.moverConSubtareas(parent, ids.destino, ids.a);
+      const primero = orden === 'alta-primero' ? crear() : mover();
+      await esperarBloqueo('SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=$2 AND $1 = ANY(pg_blocking_pids(pid))) AS bloqueado', [pid, dbName]);
+      const segundo = orden === 'alta-primero' ? mover() : crear();
+      await esperarBloqueo("SELECT count(*) >= 2 AS bloqueado FROM pg_stat_activity WHERE datname=$1 AND wait_event_type='Lock'", [dbName]);
+      await cliente.query('SELECT pg_advisory_unlock($1)', [key]);
+      const [a, b] = await Promise.all([primero, segundo]);
+      expect(a.proyectoId).toBe(orden === 'alta-primero' ? ids.proyecto : ids.destino);
+      expect(b.proyectoId).toBe(ids.destino);
+      expect(await prisma.tarea.count({ where: { tareaPadreId: parent, proyectoId: ids.destino } })).toBe(1);
+      expect(await prisma.tarea.count({ where: { tareaPadreId: parent, proyectoId: { not: ids.destino } } })).toBe(0);
+    } finally {
+      await cliente.query('SELECT pg_advisory_unlock($1)', [key]);
+      await cliente.query('DROP TRIGGER IF EXISTS c03_barrera ON tareas');
+      await cliente.query('DROP FUNCTION IF EXISTS c03_barrera()');
+      await cliente.end();
+      await prisma.tarea.deleteMany({ where: { id: parent } });
+    }
+  }, 20000);
+  it('C-03 y C-04 revalidan revocación antes de escribir', async () => {
+    const tr = new PrismaTareaRepository(prisma);
+    const pr = new PrismaProyectoRepository(prisma);
+    await prisma.tarea.create({ data: { id: 'c03_revoke', titulo: 'Padre', proyectoId: ids.proyecto } });
+    const cliente = new Client({ connectionString: dbUrl }); await cliente.connect();
+    try {
+      await cliente.query('BEGIN');
+      await cliente.query('DELETE FROM membresias WHERE "espacioId"=$1 AND "usuarioId"=$2', [ids.espacio, ids.b]);
+      const crear = tr.crearSubtareaAutorizada({ titulo: 'Hija', prioridad: 'MEDIA', proyectoId: ids.proyecto, tareaPadreId: 'c03_revoke', etiquetasIds: [] }, ids.b);
+      const pid = (await cliente.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!.pid;
+      await esperarBloqueo('SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=$2 AND $1 = ANY(pg_blocking_pids(pid))) AS bloqueado', [pid, dbName]);
+      await cliente.query('COMMIT');
+      await expect(crear).rejects.toMatchObject({ status: 404 });
+      await expect(tr.moverConSubtareas('c03_revoke', ids.destino, ids.b)).rejects.toMatchObject({ status: 404 });
+      await expect(pr.actualizarAutorizado(ids.proyecto, ids.b, { nombre: 'No guardar' })).rejects.toMatchObject({ status: 404 });
+      expect((await prisma.tarea.findUniqueOrThrow({ where: { id: 'c03_revoke' } })).proyectoId).toBe(ids.proyecto);
+      expect(await prisma.tarea.count({ where: { tareaPadreId: 'c03_revoke' } })).toBe(0);
+      expect((await prisma.proyecto.findUniqueOrThrow({ where: { id: ids.proyecto } })).nombre).toBe('P');
+    } finally {
+      await cliente.query('ROLLBACK').catch(() => undefined); await cliente.end();
+      await prisma.membresia.upsert({ where: { usuarioId_espacioId: { espacioId: ids.espacio, usuarioId: ids.b } }, create: { espacioId: ids.espacio, usuarioId: ids.b }, update: {} });
+      await prisma.tarea.deleteMany({ where: { id: 'c03_revoke' } });
+    }
+  });
+  it.each(['mover', 'patch'])('revocación concurrente bloquea %s antes de su commit', async operacion => {
+    const tr = new PrismaTareaRepository(prisma);
+    const pr = new PrismaProyectoRepository(prisma);
+    await prisma.tarea.create({ data: { id: 'c03_rev_mov', titulo: 'Padre', proyectoId: ids.proyecto } });
+    const cliente = new Client({ connectionString: dbUrl }); await cliente.connect();
+    try {
+      await cliente.query('BEGIN');
+      await cliente.query('DELETE FROM membresias WHERE "espacioId"=$1 AND "usuarioId"=$2', [ids.espacio, ids.b]);
+      const pendiente = operacion === 'mover'
+        ? tr.moverConSubtareas('c03_rev_mov', ids.destino, ids.b)
+        : pr.actualizarAutorizado(ids.proyecto, ids.b, { nombre: 'No guardar' }, [ids.a]);
+      const pid = (await cliente.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!.pid;
+      await esperarBloqueo('SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=$2 AND $1 = ANY(pg_blocking_pids(pid))) AS bloqueado', [pid, dbName]);
+      await cliente.query('COMMIT');
+      await expect(pendiente).rejects.toMatchObject({ status: 404 });
+      expect((await prisma.tarea.findUniqueOrThrow({ where: { id: 'c03_rev_mov' } })).proyectoId).toBe(ids.proyecto);
+      expect((await prisma.proyecto.findUniqueOrThrow({ where: { id: ids.proyecto } })).nombre).toBe('P');
+    } finally {
+      await cliente.query('ROLLBACK').catch(() => undefined); await cliente.end();
+      await prisma.membresia.upsert({ where: { usuarioId_espacioId: { espacioId: ids.espacio, usuarioId: ids.b } }, create: { espacioId: ids.espacio, usuarioId: ids.b }, update: {} });
+      await prisma.tarea.deleteMany({ where: { id: 'c03_rev_mov' } });
+    }
+  }, 20000);
   it('crea una sola publicación y aviso ante 12 reintentos concurrentes', async () => {
     const resultados = await Promise.all(Array.from({ length: 12 }, () => repo.crear(ids.tarea, ids.a, `@[${ids.a}] @[${ids.b}]`, 'concurrente', [ids.a, ids.b])));
     expect(resultados.filter(r => !r.replay)).toHaveLength(1);

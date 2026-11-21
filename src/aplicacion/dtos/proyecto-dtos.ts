@@ -57,7 +57,7 @@ export class CrearProyectoDto {
 }
 
 export class ActualizarProyectoDto {
-  @IsOptional()
+  @ValidateIf((_o, value: unknown) => value !== undefined)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @IsNotEmpty({ message: 'El nombre del proyecto no puede estar vacío' })
@@ -81,7 +81,7 @@ export class ActualizarProyectoDto {
   fechaFin?: string | null;
 
   // Reemplaza el conjunto completo de miembros del proyecto (IDs de usuarios del espacio).
-  @IsOptional()
+  @ValidateIf((_o, value: unknown) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(500)
   @IsString({ each: true })

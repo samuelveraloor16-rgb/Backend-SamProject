@@ -60,6 +60,7 @@ export interface ProyectoRepository {
   filtrarIdsMiembrosDelEspacio(espacioId: string, usuarioIds: string[]): Promise<string[]>;
   crear(datos: DatosCrearProyecto): Promise<ProyectoConMiembros>;
   actualizar(id: string, datos: DatosActualizarProyecto): Promise<ProyectoConMiembros>;
+  actualizarAutorizado(id: string, usuarioId: string, datos: DatosActualizarProyecto, miembrosIds?: string[]): Promise<ProyectoConMiembros>;
   /** Reemplaza el conjunto completo de miembros del proyecto. */
   reemplazarMiembros(proyectoId: string, usuarioIds: string[]): Promise<void>;
   /** Borrado físico en cascada (tareas, subtareas, comentarios, adjuntos) vía ON DELETE CASCADE del schema. */

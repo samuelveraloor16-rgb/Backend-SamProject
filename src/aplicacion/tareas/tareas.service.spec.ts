@@ -106,9 +106,10 @@ describe('TareasService', () => {
       buscarPorId: jest.fn(),
       listarSubtareas: jest.fn().mockResolvedValue([]),
       crear: jest.fn(),
+      crearSubtareaAutorizada: jest.fn(),
       actualizar: jest.fn(),
       eliminar: jest.fn(),
-      moverConSubtareas: jest.fn(),
+      moverConSubtareas: jest.fn().mockResolvedValue(tarea()),
     };
     etiquetas = {
       listarPorEspacio: jest.fn(),
@@ -118,6 +119,7 @@ describe('TareasService', () => {
     };
     proyectos = {
       listarPorEspacio: jest.fn(),
+      actualizarAutorizado: jest.fn(),
       buscarPorId: jest.fn().mockResolvedValue(proyecto()),
       filtrarIdsMiembrosDelEspacio: jest.fn().mockResolvedValue([]),
       crear: jest.fn(),
@@ -280,10 +282,10 @@ describe('TareasService', () => {
     it('la subtarea hereda proyectoId del padre', async () => {
       tareas.buscarPorId.mockResolvedValue(tarea({ id: 'padre', proyectoId: 'proy-42' }));
       proyectos.buscarPorId.mockResolvedValue(proyecto({ id: 'proy-42' }));
-      tareas.crear.mockImplementation(async (datos) => tarea({ ...datos, id: 'sub-1', tareaPadreId: 'padre' }) as TareaCompleta);
+      tareas.crearSubtareaAutorizada.mockImplementation(async (datos) => tarea({ ...datos, id: 'sub-1', tareaPadreId: 'padre' }) as TareaCompleta);
       const resp = await service.crearSubtarea('padre', 'user-1', { titulo: 'Sub tarea' });
-      expect(tareas.crear).toHaveBeenCalledWith(
-        expect.objectContaining({ proyectoId: 'proy-42', tareaPadreId: 'padre' }),
+      expect(tareas.crearSubtareaAutorizada).toHaveBeenCalledWith(
+        expect.objectContaining({ proyectoId: 'proy-42', tareaPadreId: 'padre' }), 'user-1',
       );
       expect(resp.tareaPadreId).toBe('padre');
     });
@@ -364,6 +366,20 @@ describe('TareasService', () => {
   });
 
   describe('mover (RF-13)', () => {
+    it('no revela que es subtarea si no está autorizado', async () => {
+      tareas.buscarPorId.mockResolvedValue(tarea({ tareaPadreId: 'padre' }));
+      espacios.obtenerMembresia.mockResolvedValue(null);
+      await expect(service.mover('tar-1', 'user-x', { proyectoId: 'proy-2' })).rejects.toBeInstanceOf(NotFoundException);
+      expect(tareas.moverConSubtareas).not.toHaveBeenCalled();
+    });
+    it('rechaza mover hija independientemente, pero permite no-op', async () => {
+      tareas.buscarPorId.mockResolvedValue(tarea({ tareaPadreId: 'padre' }));
+      proyectos.buscarPorId.mockImplementation(async id => proyecto({ id }));
+      await expect(service.mover('tar-1', 'user-1', { proyectoId: 'proy-2' })).rejects.toBeInstanceOf(BadRequestException);
+      expect(tareas.moverConSubtareas).not.toHaveBeenCalled();
+      await service.mover('tar-1', 'user-1', { proyectoId: 'proy-1' });
+      expect(tareas.moverConSubtareas).toHaveBeenCalledWith('tar-1', 'proy-1', 'user-1');
+    });
     it('400 entre espacios distintos', async () => {
       tareas.buscarPorId.mockResolvedValue(tarea({ proyectoId: 'proy-1' }));
       proyectos.buscarPorId.mockImplementation(async (id: string) =>
@@ -395,8 +411,10 @@ describe('TareasService', () => {
       proyectos.buscarPorId.mockImplementation(async (id: string) =>
         proyecto({ id, espacioId: 'esp-1' }),
       );
+      tareas.moverConSubtareas.mockResolvedValue(tarea({ proyectoId: 'proy-2' }));
       const resp = await service.mover('tar-1', 'user-1', { proyectoId: 'proy-2' });
-      expect(tareas.moverConSubtareas).toHaveBeenCalledWith('tar-1', 'proy-2');
+      expect(tareas.moverConSubtareas).toHaveBeenCalledWith('tar-1', 'proy-2', 'user-1');
+      expect(tareas.buscarPorId).toHaveBeenCalledTimes(1);
       expect(resp.proyectoId).toBe('proy-2');
     });
   });

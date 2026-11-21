@@ -57,6 +57,7 @@ describe('ProyectosService', () => {
       filtrarIdsMiembrosDelEspacio: jest.fn(),
       crear: jest.fn(),
       actualizar: jest.fn(),
+      actualizarAutorizado: jest.fn(),
       reemplazarMiembros: jest.fn(),
       eliminar: jest.fn(),
       obtenerBandeja: jest.fn(),
@@ -168,6 +169,20 @@ describe('ProyectosService', () => {
   });
 
   describe('actualizar (RF-09)', () => {
+    it('rechaza null en nombre o miembros sin escribir incluso sin ValidationPipe', async () => {
+      proyectos.buscarPorId.mockResolvedValue(proyecto());
+      await expect(service.actualizar('proy-1', 'user-1', { nombre: null } as never)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.actualizar('proy-1', 'user-1', { miembros: null } as never)).rejects.toBeInstanceOf(BadRequestException);
+      expect(proyectos.actualizarAutorizado).not.toHaveBeenCalled();
+    });
+    it('delega campos y miembros a una sola operación autorizada y propaga el rechazo', async () => {
+      proyectos.buscarPorId.mockResolvedValue(proyecto());
+      proyectos.actualizarAutorizado.mockRejectedValue(new BadRequestException());
+      await expect(service.actualizar('proy-1', 'user-1', { nombre: 'Otro', miembros: ['ajeno'] })).rejects.toBeInstanceOf(BadRequestException);
+      expect(proyectos.actualizarAutorizado).toHaveBeenCalledWith('proy-1', 'user-1', { nombre: 'Otro' }, ['ajeno']);
+      expect(proyectos.actualizar).not.toHaveBeenCalled();
+      expect(proyectos.reemplazarMiembros).not.toHaveBeenCalled();
+    });
     it('400 si el proyecto está archivado', async () => {
       proyectos.buscarPorId.mockResolvedValue(proyecto({ archivado: true }));
       await expect(
@@ -186,10 +201,9 @@ describe('ProyectosService', () => {
       proyectos.buscarPorId
         .mockResolvedValueOnce(proyecto()) // exigirProyectoVisible
         .mockResolvedValueOnce(proyecto()); // tras la actualización
-      proyectos.filtrarIdsMiembrosDelEspacio.mockResolvedValue(['user-2']);
-      proyectos.actualizar.mockResolvedValue(proyecto());
+      proyectos.actualizarAutorizado.mockResolvedValue(proyecto());
       await service.actualizar('proy-1', 'user-1', { miembros: ['user-2'] });
-      expect(proyectos.reemplazarMiembros).toHaveBeenCalledWith('proy-1', ['user-2']);
+      expect(proyectos.actualizarAutorizado).toHaveBeenCalledWith('proy-1', 'user-1', {}, ['user-2']);
     });
   });
 

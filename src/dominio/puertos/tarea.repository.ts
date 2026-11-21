@@ -78,11 +78,12 @@ export interface TareaRepository {
   buscarPorId(id: string): Promise<TareaCompleta | null>;
   listarSubtareas(padreId: string): Promise<TareaCompleta[]>;
   crear(datos: DatosCrearTarea): Promise<TareaCompleta>;
+  crearSubtareaAutorizada(datos: DatosCrearTarea, usuarioId: string): Promise<TareaCompleta>;
   actualizar(id: string, datos: DatosActualizarTarea): Promise<TareaCompleta>;
   /** Borra la tarea y sus subtareas (cascada). */
   eliminar(id: string): Promise<void>;
   /** Mueve la tarea y sus subtareas al proyecto destino (mismo espacio, validado en servicio). */
-  moverConSubtareas(tareaId: string, destinoProyectoId: string): Promise<void>;
+  moverConSubtareas(tareaId: string, destinoProyectoId: string, usuarioId: string): Promise<TareaCompleta>;
 }
 
 /** Ventana efectiva del calendario (RF-18). `null` = sin límite en ese extremo. */

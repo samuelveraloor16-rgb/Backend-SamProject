@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   ProyectoRepository,
   ProyectoEntity,
@@ -109,6 +109,35 @@ export class PrismaProyectoRepository implements ProyectoRepository {
       include: INCLUDE_MIEMBROS,
     });
     return aProyectoConMiembros(p as ProyectoConFilas);
+  }
+
+  async actualizarAutorizado(id: string, usuarioId: string, datos: DatosActualizarProyecto, miembrosIds?: string[]): Promise<ProyectoConMiembros> {
+    return this.prisma.$transaction(async tx => {
+      const filas = await tx.$queryRaw<{ espacioId: string; archivado: boolean; fechaInicio: Date | null; fechaFin: Date | null }[]>`SELECT "espacioId", "archivado", "fechaInicio", "fechaFin" FROM "proyectos" WHERE "id" = ${id} FOR UPDATE`;
+      const p = filas[0];
+      if (!p) throw new NotFoundException('Proyecto no encontrado');
+      // Match RF-19 order: proyecto, usuarios, membresías.
+      for (const user of [...new Set([usuarioId, ...(miembrosIds ?? [])])].sort()) {
+        await tx.$queryRaw`SELECT "id" FROM "usuarios" WHERE "id" = ${user} FOR KEY SHARE`;
+      }
+      const miembros = await tx.$queryRaw<{ usuarioId: string }[]>`SELECT "usuarioId" FROM "membresias" WHERE "espacioId" = ${p.espacioId} AND "usuarioId" = ANY(${[...new Set([usuarioId, ...(miembrosIds ?? [])])]}) ORDER BY "usuarioId" FOR SHARE`;
+      const validos = new Set(miembros.map(m => m.usuarioId));
+      if (!validos.has(usuarioId)) throw new NotFoundException('Proyecto no encontrado');
+      if (p.archivado) throw new BadRequestException('El proyecto está archivado');
+      if (miembrosIds?.some(idMiembro => !validos.has(idMiembro))) throw new BadRequestException('Hay miembros seleccionados que no pertenecen al espacio');
+      const inicio = datos.fechaInicio === undefined ? p.fechaInicio : datos.fechaInicio;
+      const fin = datos.fechaFin === undefined ? p.fechaFin : datos.fechaFin;
+      if (inicio && fin && fin < inicio) throw new BadRequestException('La fecha de fin no puede ser anterior a la fecha de inicio');
+      const { nombre, ...resto } = datos;
+      const actualizado = await tx.proyecto.update({ where: { id }, data: { ...resto, ...(nombre != null ? { nombre } : {}) }, include: INCLUDE_MIEMBROS });
+      if (miembrosIds !== undefined) {
+        await tx.proyectoMiembro.deleteMany({ where: { proyectoId: id } });
+        if (miembrosIds.length) await tx.proyectoMiembro.createMany({ data: miembrosIds.map(user => ({ proyectoId: id, usuarioId: user })) });
+        const final = await tx.proyecto.findUniqueOrThrow({ where: { id }, include: INCLUDE_MIEMBROS });
+        return aProyectoConMiembros(final as ProyectoConFilas);
+      }
+      return aProyectoConMiembros(actualizado as ProyectoConFilas);
+    });
   }
 
   async reemplazarMiembros(proyectoId: string, usuarioIds: string[]): Promise<void> {

@@ -91,6 +91,7 @@ describe('EspaciosService', () => {
       buscarPorId: jest.fn(),
       listarSubtareas: jest.fn().mockResolvedValue([]),
       crear: jest.fn(),
+      crearSubtareaAutorizada: jest.fn(),
       actualizar: jest.fn(),
       eliminar: jest.fn(),
       moverConSubtareas: jest.fn(),

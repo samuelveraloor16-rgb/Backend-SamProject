@@ -141,8 +141,11 @@ export class ProyectosService {
     if (Object.values(dto).every((v) => v === undefined)) {
       throw new BadRequestException('No hay cambios que aplicar');
     }
-    if (dto.nombre !== undefined && !dto.nombre.trim()) {
+    if (dto.nombre !== undefined && (typeof dto.nombre !== 'string' || !dto.nombre.trim())) {
       throw new BadRequestException('El nombre del proyecto no puede estar vacío');
+    }
+    if (dto.miembros !== undefined && !Array.isArray(dto.miembros)) {
+      throw new BadRequestException('Los miembros deben ser un arreglo');
     }
     const fechaInicio =
       dto.fechaInicio === undefined ? p.fechaInicio : dto.fechaInicio === null ? null : new Date(dto.fechaInicio);
@@ -150,22 +153,12 @@ export class ProyectosService {
       dto.fechaFin === undefined ? p.fechaFin : dto.fechaFin === null ? null : new Date(dto.fechaFin);
     validarRangoFechas(fechaInicio, fechaFin);
 
-    await this.proyectos.actualizar(id, {
+    const actualizado = await this.proyectos.actualizarAutorizado(id, usuarioId, {
       ...(dto.nombre !== undefined ? { nombre: dto.nombre.trim() } : {}),
       ...(dto.descripcion !== undefined ? { descripcion: dto.descripcion } : {}),
       ...(dto.fechaInicio !== undefined ? { fechaInicio } : {}),
       ...(dto.fechaFin !== undefined ? { fechaFin } : {}),
-    });
-
-    if (dto.miembros !== undefined) {
-      const ids = [...new Set(dto.miembros)];
-      await this.asegurarMiembrosDelEspacio(p.espacioId, ids);
-      await this.proyectos.reemplazarMiembros(id, ids);
-    }
-    const actualizado = await this.proyectos.buscarPorId(id);
-    if (!actualizado) {
-      throw new NotFoundException('Proyecto no encontrado');
-    }
+    }, dto.miembros === undefined ? undefined : [...new Set(dto.miembros)]);
     return this.publicoDe(actualizado);
   }
 

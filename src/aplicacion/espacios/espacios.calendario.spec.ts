@@ -84,6 +84,7 @@ describe('EspaciosService.calendario (RF-18)', () => {
       buscarPorId: jest.fn(),
       listarSubtareas: jest.fn(),
       crear: jest.fn(),
+      crearSubtareaAutorizada: jest.fn(),
       actualizar: jest.fn(),
       eliminar: jest.fn(),
       moverConSubtareas: jest.fn(),

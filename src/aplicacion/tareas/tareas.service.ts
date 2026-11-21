@@ -282,10 +282,10 @@ export class TareasService {
     if (!padre) {
       throw new NotFoundException('Tarea no encontrada');
     }
+    const proyecto = await this.exigirProyectoEscribible(padre.proyectoId, usuarioId);
     if (padre.tareaPadreId !== null) {
       throw new BadRequestException('Las subtareas no pueden tener subtareas');
     }
-    const proyecto = await this.exigirProyectoEscribible(padre.proyectoId, usuarioId);
     const titulo = dto.titulo?.trim();
     if (!titulo) {
       throw new BadRequestException('El título no puede estar vacío');
@@ -295,7 +295,7 @@ export class TareasService {
       dto.responsableId,
       dto.responsableId !== undefined,
     );
-    const tarea = await this.tareas.crear({
+    const tarea = await this.tareas.crearSubtareaAutorizada({
       titulo,
       descripcion: dto.descripcion ?? null,
       prioridad: dto.prioridad ?? 'MEDIA',
@@ -304,7 +304,7 @@ export class TareasService {
       proyectoId: padre.proyectoId,
       tareaPadreId: padre.id,
       etiquetasIds: [],
-    });
+    }, usuarioId);
     return aTareaPublica(tarea);
   }
 
@@ -391,13 +391,10 @@ export class TareasService {
       throw new BadRequestException('El proyecto destino está archivado');
     }
 
-    if (origen.id !== destino.id) {
-      await this.tareas.moverConSubtareas(id, destino.id);
+    if (origen.id !== destino.id && tarea.tareaPadreId !== null) {
+      throw new BadRequestException('No se puede mover una subtarea independientemente');
     }
-    const actualizada = await this.tareas.buscarPorId(id);
-    if (!actualizada) {
-      throw new NotFoundException('Tarea no encontrada');
-    }
+    const actualizada = await this.tareas.moverConSubtareas(id, destino.id, usuarioId);
     return aTareaPublica(actualizada);
   }
 
