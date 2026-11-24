@@ -72,15 +72,18 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
   }
 
   // RF-03: reset de contraseña. Limpia el token y invalida sesiones.
-  async restablecerPassword(id: string, passwordHash: string): Promise<void> {
-    await this.prisma.usuario.update({
-      where: { id },
-      data: {
-        passwordHash,
-        resetTokenHash: null,
-        resetTokenExpires: null,
-        tokenVersion: { increment: 1 },
-      },
+  async restablecerPassword(id: string, tokenHash: string, passwordHash: string): Promise<number> {
+    return this.prisma.$transaction(async tx => {
+      // Se toma el bloqueo antes de evaluar el reloj: puede esperarse más que la vida restante del token.
+      await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${id} FOR UPDATE`;
+      // Prisma almacena DateTime como timestamp sin zona en UTC, con precisión de milisegundos.
+      return tx.$executeRaw`
+        UPDATE usuarios SET "passwordHash" = ${passwordHash}, "resetTokenHash" = NULL,
+          "resetTokenExpires" = NULL, "tokenVersion" = "tokenVersion" + 1,
+          "actualizadoEn" = date_trunc('milliseconds', clock_timestamp() AT TIME ZONE 'UTC')
+        WHERE id = ${id} AND "resetTokenHash" = ${tokenHash}
+          AND "resetTokenExpires" >= date_trunc('milliseconds', clock_timestamp() AT TIME ZONE 'UTC')
+      `;
     });
   }
 

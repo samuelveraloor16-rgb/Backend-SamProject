@@ -36,8 +36,8 @@ export interface UsuarioRepository {
    */
   crearConEspacioPersonal(datos: DatosRegistroConEspacio): Promise<UsuarioEntity>;
   actualizarPerfil(id: string, datos: DatosActualizarPerfil): Promise<UsuarioEntity>;
-  /** Actualiza hash de contraseña y limpia el token de reset. Incrementa tokenVersion (invalida sesiones). */
-  restablecerPassword(id: string, passwordHash: string): Promise<void>;
+  /** Consume el token vigente atómicamente y devuelve el número de usuarios actualizados. */
+  restablecerPassword(id: string, tokenHash: string, passwordHash: string): Promise<number>;
   actualizarPasswordDesdePerfil(id: string, passwordHash: string): Promise<void>;
   incrementarTokenVersion(id: string): Promise<void>;
   guardarResetToken(id: string, tokenHash: string, expira: Date): Promise<void>;

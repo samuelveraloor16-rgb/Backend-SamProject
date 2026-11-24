@@ -145,7 +145,10 @@ export class AuthService {
       throw new BadRequestException('El enlace es inválido o ha caducado');
     }
     const passwordHash = await this.hasher.hash(dto.contrasenaNueva);
-    await this.usuarios.restablecerPassword(usuario.id, passwordHash);
+    const actualizados = await this.usuarios.restablecerPassword(usuario.id, tokenHash, passwordHash);
+    if (actualizados !== 1) {
+      throw new BadRequestException('El enlace es inválido o ha caducado');
+    }
     return { mensaje: 'Contraseña actualizada correctamente. Inicia sesión con tu nueva contraseña.' };
   }
 

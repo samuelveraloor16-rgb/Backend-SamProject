@@ -197,9 +197,17 @@ describe('AuthService', () => {
           resetTokenExpires: new Date(Date.now() + 60_000),
         }),
       );
+      usuarios.restablecerPassword.mockResolvedValue(1);
       const resp = await service.restablecer({ token: tokenPlano, contrasenaNueva: 'nueva1234' });
-      expect(usuarios.restablecerPassword).toHaveBeenCalledWith('user-1', 'hash-nuevo');
+      expect(usuarios.restablecerPassword).toHaveBeenCalledWith('user-1', sha256Hex(tokenPlano), 'hash-nuevo');
       expect(resp.mensaje).toContain('Contraseña actualizada');
+    });
+
+    it('rechaza con el mismo error genérico si el token fue consumido o venció antes de actualizar', async () => {
+      usuarios.buscarPorResetTokenHash.mockResolvedValue(crearUsuario({ resetTokenExpires: new Date(Date.now() + 60_000) }));
+      usuarios.restablecerPassword.mockResolvedValue(0);
+      await expect(service.restablecer({ token: tokenPlano, contrasenaNueva: 'nueva1234' }))
+        .rejects.toMatchObject({ status: 400, message: 'El enlace es inválido o ha caducado' });
     });
 
     it('busca por el HASH sha256 del token, nunca por el token plano', async () => {
