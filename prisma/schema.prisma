@@ -37,6 +37,20 @@ enum TipoNotificacion {
   SISTEMA
 }
 
+/// RF-20: plataforma del dispositivo móvil registrado para push.
+enum PlataformaDispositivo {
+  ANDROID
+  IOS
+}
+
+/// RF-20: estados de una fila del outbox push. «Vencida»/reintentos se calculan; no es estado editable.
+enum EstadoPushOutbox {
+  PENDIENTE
+  ENVIADO
+  FALLIDO
+  DESCARTADO
+}
+
 model Usuario {
   id                String    @id @default(cuid())
   email             String    @unique
@@ -61,6 +75,8 @@ model Usuario {
   invitacionesCreadas Invitacion[]      @relation("InvitadoPor")
   menciones         Mencion[]
   idempotencias     IdempotenciaComentario[]
+  dispositivos      Dispositivo[]
+  pushOutbox        PushOutbox[]
 
   @@map("usuarios")
 }
@@ -175,6 +191,7 @@ model Tarea {
   etiquetas         TareaEtiqueta[]
   comentarios       Comentario[]
   adjuntos          Adjunto[]
+  pushOutbox        PushOutbox[]
 
   @@index([proyectoId, estado])
   @@index([responsableId])
@@ -220,6 +237,7 @@ model Comentario {
   menciones     Mencion[]
   notificaciones Notificacion[]
   idempotencias IdempotenciaComentario[]
+  pushOutbox    PushOutbox[]
 
   @@index([tareaId])
   @@map("comentarios")
@@ -300,4 +318,81 @@ model RegistroDeCambios {
   @@index([entidad, entidadId])
   @@index([usuarioId])
   @@map("registro_de_cambios")
+}
+
+/// RF-20 (§9.2): dispositivo móvil registrado para push. `tokenPush` es único en BD
+/// y JAMÁS aparece en respuestas, logs ni errores.
+model Dispositivo {
+  id                   String                 @id @default(cuid())
+  usuarioId            String
+  plataforma           PlataformaDispositivo
+  tokenPush            String                 @unique
+  /// Versión de sesión (Usuario.tokenVersion) vigente al registrarse/refrescarse.
+  /// El emisor la revalida en el instante de enviar (§9.7): si no coincide → DESCARTADO.
+  tokenVersionVinculado Int
+  creadoEn             DateTime               @default(now())
+  actualizadoEn        DateTime               @updatedAt
+  /// Diagnóstico: último envío exitoso a este dispositivo (opcional).
+  ultimoEnvioEn        DateTime?
+  /// Transferencia 2 pasos (§9.3): en BD solo el hash SHA-256 del código, TTL 5 min,
+  /// un solo uso. Usarlo o generarlo otra vez lo invalida (se limpia al consumir).
+  codigoTransferenciaHash     String?
+  codigoTransferenciaExpiraEn DateTime?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("dispositivos")
+}
+
+/// RF-20 (§9.4/§9.6): outbox de envíos push. La fila nace en la transacción del negocio
+/// (asignación/comentarios) o en el escaneo de vencimientos;
+/// el envío al proveedor ocurre SIEMPRE después del commit, con revalidación previa.
+/// `claveUnica` es la garantía de dedup (una sola vez por evento).
+model PushOutbox {
+  id             String            @id @default(cuid())
+  /// venc24:<tareaId>:<fechaLimiteISO> · vencfin:<tareaId>:<fechaLimiteISO> ·
+  /// com:<comentarioId>:<usuarioId> · asig:<tareaId>:<uuid> (nunca NULL → la UNIQUE cubre todo).
+  claveUnica     String            @unique
+  usuarioId      String
+  tipo           TipoNotificacion
+  tareaId        String
+  comentarioId   String?
+  estado         EstadoPushOutbox  @default(PENDIENTE)
+  intentos       Int               @default(0)
+  /// Próxima oportunidad de envío (backoff exponencial acotado 1 min → 2 h).
+  proximoIntentoEn DateTime       @default(now())
+  /// Motivo técnico SANITIZADO: sin tokens, sin contenido de comentarios ni títulos.
+  ultimoError    String?
+  enviadoEn      DateTime?
+  creadoEn       DateTime          @default(now())
+  actualizadoEn  DateTime          @updatedAt
+
+  usuario    Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tarea      Tarea       @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  comentario Comentario? @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
+
+  @@index([estado, proximoIntentoEn])
+  @@index([usuarioId, estado])
+  // Un comentario genera un solo push por destinatario, incluso si es responsable y mencionado.
+  // Para comentarioId NULL la garantía de dedup es claveUnica (NOT NULL).
+  @@unique([comentarioId, usuarioId])
+  @@map("push_outbox")
+}
+
+/// RF20 incremento 3: diario técnico sin tokens/contenido. Conserva tickets aceptados
+/// por generación de vínculo para no reenviarlos si otro dispositivo falla.
+model PushIntento {
+  id             String   @id @default(cuid())
+  outboxId       String
+  dispositivoId  String
+  usuarioId      String
+  vinculoEn      DateTime
+  aceptado       Boolean  @default(false)
+  rechazado      Boolean  @default(false)
+  creadoEn       DateTime @default(now())
+
+  @@index([usuarioId, creadoEn])
+  @@index([outboxId, dispositivoId, vinculoEn, aceptado])
+  @@map("push_intentos")
 }

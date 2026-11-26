@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { PushSchedulingModule } from './infraestructura/push/push-scheduling.module';
+import { DispositivosService } from './aplicacion/dispositivos/dispositivos.service';
+import { DispositivosController } from './interfaces/http/dispositivos.controller';
+import { PushPersistenceModule } from './infraestructura/repositorios/push-persistence.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -55,10 +59,13 @@ import { MAILER } from './dominio/puertos/mailer.port';
       }),
     }),
     PrismaModule,
+    PushPersistenceModule,
+    PushSchedulingModule,
   ],
-  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController],
+  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController, DispositivosController],
   providers: [
     AuthService,
+    DispositivosService,
     PerfilService,
     EspaciosService,
     ProyectosService,

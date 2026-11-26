@@ -199,7 +199,7 @@ export class TareasService {
       proyectoId,
       tareaPadreId: null,
       etiquetasIds,
-    });
+    }, usuarioId);
     return aTareaPublica(tarea);
   }
 
@@ -262,7 +262,7 @@ export class TareasService {
         : {}),
       ...(responsableId.cambiado ? { responsableId: responsableId.valor } : {}),
       ...(etiquetasIds !== undefined ? { etiquetasIds } : {}),
-    });
+    }, usuarioId);
     return aTareaPublica(actualizada);
   }
 
@@ -325,7 +325,7 @@ export class TareasService {
     const actualizada = await this.tareas.actualizar(id, {
       estado: dto.estado,
       ...(fechaFinalizacion !== undefined ? { fechaFinalizacion } : {}),
-    });
+    }, usuarioId);
     return aTareaPublica(actualizada);
   }
 
@@ -360,7 +360,7 @@ export class TareasService {
       proyectoId: bandeja.id,
       tareaPadreId: null,
       etiquetasIds: [],
-    });
+    }, usuarioId);
     return aTareaPublica(tarea);
   }
 

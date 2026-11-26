@@ -14,7 +14,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
     super({
       adapter: new PrismaPg(databaseUrl),
-      log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+      // PostgreSQL puede incluir la fila completa en errores de constraints.
+      // No registrar errores/query automáticamente: dispositivos contiene tokens push.
+      log: [],
     });
   }
 

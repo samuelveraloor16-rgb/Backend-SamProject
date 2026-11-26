@@ -6,6 +6,7 @@ import type { ComentariosRepository } from '../../dominio/puertos/comentarios.re
 import { PrismaService } from '../prisma/prisma.service';
 import { conErroresTransitorios } from '../prisma/errores-transitorios';
 import { clavesComentario, nuevaHuella, verificarHuella } from '../seguridad/huella-comentario';
+import { PrismaPushOutboxRepository } from './prisma-push-outbox.repository';
 
 type Tx = Prisma.TransactionClient;
 const marcadorPendiente = new Date('9999-12-31T23:59:59.000Z');
@@ -31,17 +32,18 @@ async function bloquearTarea(tx: Tx, tareaId: string, usuarioId: string, destina
   if (!tareas[0]) throw new NotFoundException('Tarea no encontrada');
   const proyectos = await tx.$queryRaw<{ espacioId: string; archivado: boolean }[]>`SELECT "espacioId", "archivado" FROM "proyectos" WHERE "id" = ${tareas[0].proyectoId} FOR SHARE`;
   if (!proyectos[0]) throw new NotFoundException('Tarea no encontrada');
-  const bloqueadas = await tx.$queryRaw<{ proyectoId: string }[]>`SELECT "proyectoId" FROM "tareas" WHERE "id" = ${tareaId} FOR SHARE`;
+  const bloqueadas = await tx.$queryRaw<{ proyectoId: string; responsableId: string | null }[]>`SELECT "proyectoId", "responsableId" FROM "tareas" WHERE "id" = ${tareaId} FOR SHARE`;
   if (!bloqueadas[0]) throw new NotFoundException('Tarea no encontrada');
   if (bloqueadas[0].proyectoId !== tareas[0].proyectoId) throw new ServiceUnavailableException('La tarea se movió; reintente');
   // Bajas físicas bloquean primero usuarios y después sus membresías (cascada).
   // Tomar KEY SHARE antes de membresías evita inversión de orden con esos deletes.
-  for (const id of [...new Set([usuarioId, ...destinatarios])].sort()) {
+  const responsableId = bloqueadas[0].responsableId;
+  for (const id of [...new Set([usuarioId, ...destinatarios, ...(responsableId ? [responsableId] : [])])].sort()) {
     await tx.$queryRaw`SELECT "id" FROM "usuarios" WHERE "id" = ${id} FOR KEY SHARE`;
   }
   const miembros = await tx.$queryRaw<{ usuarioId: string }[]>`SELECT "usuarioId" FROM "membresias" WHERE "espacioId" = ${proyectos[0].espacioId} AND "usuarioId" = ${usuarioId} FOR SHARE`;
   if (!miembros.length) throw new NotFoundException('Tarea no encontrada');
-  return proyectos[0];
+  return { ...proyectos[0], responsableId };
 }
 async function visible(tx: Tx, tareaId: string, usuarioId: string) {
   const t = await tx.tarea.findFirst({ where: { id: tareaId, proyecto: { espacio: { membresias: { some: { usuarioId } } } } }, select: { proyecto: { select: { espacioId: true } } } });
@@ -84,6 +86,22 @@ export class PrismaComentariosRepository implements ComentariosRepository {
           if (!rows.length) throw new BadRequestException('Uno o más destinatarios no son válidos');
         }
         const c = await tx.comentario.create({ data: { tareaId, autorId: usuarioId, texto, menciones: { create: menciones.map((id, posicion) => ({ usuarioId: id, posicion })) }, notificaciones: { create: menciones.filter(id => id !== usuarioId).map(id => ({ usuarioId: id, tipo: 'MENCION', titulo: 'Te mencionaron' })) } }, include: comentarioInclude });
+        // D-21: hasta 20 mencionados + responsable adicional. La tarea SHARE
+        // estabiliza la asignación; usuarios se bloquearon antes de membresías.
+        const destinatarios = new Set(menciones);
+        if (proyecto.responsableId && !destinatarios.has(proyecto.responsableId) && proyecto.responsableId !== usuarioId) {
+          const id = proyecto.responsableId;
+          const miembros = await tx.$queryRaw<{ usuarioId: string }[]>`SELECT "usuarioId" FROM "membresias" WHERE "espacioId" = ${proyecto.espacioId} AND "usuarioId" = ${id} FOR SHARE`;
+          // Responsable histórico que perdió acceso: no impedir el comentario,
+          // pero nunca encolar para él. Si fue mencionado, RF19 ya lo rechazó.
+          if (miembros.length) destinatarios.add(id);
+        }
+        destinatarios.delete(usuarioId);
+        const outbox = new PrismaPushOutboxRepository(this.prisma).enTransaccion(tx);
+        for (const id of [...destinatarios].sort()) {
+          await outbox.encolar({ claveUnica: `com:${c.id}:${id}`, usuarioId: id,
+            tipo: menciones.includes(id) ? 'MENCION' : 'COMENTARIO', tareaId, comentarioId: c.id });
+        }
         // Un marcador sin caducidad inmediata es seguro incluso si el proceso cae antes
         // de recibir confirmación del commit. Se fija la caducidad solo después del commit.
         const generacion = randomUUID();

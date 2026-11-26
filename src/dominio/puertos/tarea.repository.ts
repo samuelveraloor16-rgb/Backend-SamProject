@@ -77,9 +77,9 @@ export interface TareaRepository {
   listar(proyectoId: string, filtros: FiltrosTareas): Promise<TareaCompleta[]>;
   buscarPorId(id: string): Promise<TareaCompleta | null>;
   listarSubtareas(padreId: string): Promise<TareaCompleta[]>;
-  crear(datos: DatosCrearTarea): Promise<TareaCompleta>;
+  crear(datos: DatosCrearTarea, usuarioId: string): Promise<TareaCompleta>;
   crearSubtareaAutorizada(datos: DatosCrearTarea, usuarioId: string): Promise<TareaCompleta>;
-  actualizar(id: string, datos: DatosActualizarTarea): Promise<TareaCompleta>;
+  actualizar(id: string, datos: DatosActualizarTarea, usuarioId: string): Promise<TareaCompleta>;
   /** Borra la tarea y sus subtareas (cascada). */
   eliminar(id: string): Promise<void>;
   /** Mueve la tarea y sus subtareas al proyecto destino (mismo espacio, validado en servicio). */

@@ -188,6 +188,7 @@ describe('TareasService', () => {
       const resp = await service.crear('proy-1', 'user-1', { titulo: 'Nueva tarea' });
       expect(tareas.crear).toHaveBeenCalledWith(
         expect.objectContaining({ prioridad: 'MEDIA', titulo: 'Nueva tarea', proyectoId: 'proy-1' }),
+        'user-1',
       );
       expect(resp.id).toBe('tar-9');
     });
@@ -248,6 +249,7 @@ describe('TareasService', () => {
       expect(tareas.actualizar).toHaveBeenCalledWith(
         'tar-1',
         expect.objectContaining({ fechaLimite: null }),
+        'user-1',
       );
     });
 
@@ -259,6 +261,7 @@ describe('TareasService', () => {
       expect(tareas.actualizar).toHaveBeenCalledWith(
         'tar-1',
         expect.objectContaining({ responsableId: null }),
+        'user-1',
       );
     });
 
@@ -299,6 +302,7 @@ describe('TareasService', () => {
       expect(tareas.actualizar).toHaveBeenCalledWith(
         'tar-1',
         expect.objectContaining({ estado: 'HECHA', fechaFinalizacion: expect.any(Date) }),
+        'user-1',
       );
       expect(resp.estado).toBe('HECHA');
     });
@@ -312,6 +316,7 @@ describe('TareasService', () => {
       expect(tareas.actualizar).toHaveBeenCalledWith(
         'tar-1',
         expect.objectContaining({ estado: 'EN_CURSO', fechaFinalizacion: null }),
+        'user-1',
       );
     });
 
@@ -345,6 +350,7 @@ describe('TareasService', () => {
           prioridad: 'MEDIA',
           tareaPadreId: null,
         }),
+        'user-1',
       );
       expect(resp.prioridad).toBe('MEDIA');
       expect(resp.estado).toBe('PENDIENTE');
