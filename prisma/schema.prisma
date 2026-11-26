@@ -14,6 +14,27 @@ enum RolEspacio {
   MIEMBRO
 }
 
+enum TipoPreferenciaNotificacion {
+  TAREA_ASIGNADA
+  TAREA_POR_VENCER
+  TAREA_VENCIDA
+  COMENTARIO
+  MENCION
+}
+
+/// RF21: matriz propia independiente. CHECK SQL protege MENCION.inApp.
+model PreferenciaNotificacion {
+  usuarioId String
+  tipo TipoPreferenciaNotificacion
+  inApp Boolean @default(false)
+  correo Boolean @default(false)
+  push Boolean @default(true)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, tipo])
+  @@map("preferencias_notificaciones")
+}
+
 enum EstadoTarea {
   PENDIENTE
   EN_CURSO
@@ -77,6 +98,8 @@ model Usuario {
   idempotencias     IdempotenciaComentario[]
   dispositivos      Dispositivo[]
   pushOutbox        PushOutbox[]
+
+  preferenciasNotificaciones PreferenciaNotificacion[]
 
   @@map("usuarios")
 }
@@ -192,6 +215,7 @@ model Tarea {
   comentarios       Comentario[]
   adjuntos          Adjunto[]
   pushOutbox        PushOutbox[]
+  avisos            Notificacion[]
 
   @@index([proyectoId, estado])
   @@index([responsableId])
@@ -270,6 +294,8 @@ model Notificacion {
   datos     Json?
   creadoEn  DateTime          @default(now())
   comentarioId String?
+  tareaId String?
+  tarea Tarea? @relation(fields: [tareaId], references: [id], onDelete: Cascade)
 
   usuario   Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   comentario Comentario?      @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
@@ -277,6 +303,12 @@ model Notificacion {
   @@index([usuarioId, leida])
   @@unique([comentarioId, usuarioId, tipo])
   @@map("notificaciones")
+}
+
+/// Identidad irreversible sin FK: nunca purgar junto al recurso o aviso.
+model IdentidadAviso {
+  digest String @id
+  @@map("identidades_aviso")
 }
 
 model Mencion {
@@ -395,4 +427,32 @@ model PushIntento {
   @@index([usuarioId, creadoEn])
   @@index([outboxId, dispositivoId, vinculoEn, aceptado])
   @@map("push_intentos")
+}
+// RF21 correo: identidad mínima sin FK destructiva; no retención/purge automático.
+model IdentidadCorreo {
+  digest String @id @db.VarChar(64)
+  @@map("identidades_correo")
+}
+
+model FronteraCorreo {
+  id Int @id
+  desde DateTime @db.Timestamptz(3)
+  @@map("frontera_correo")
+}
+
+// Sin snapshot de dirección ni contenido privado. No se vincula con cascadas.
+model CorreoOutbox {
+  digest String @id @db.VarChar(64)
+  usuarioId String
+  tareaId String
+  comentarioId String?
+  tipo String
+  ocurridoEn DateTime @db.Timestamptz(3)
+  estado String @default("PENDIENTE")
+  intentos Int @default(0)
+  proximoIntentoEn DateTime @default(now()) @db.Timestamptz(3)
+  generacion String?
+  leaseHasta DateTime? @db.Timestamptz(3)
+  @@index([estado, proximoIntentoEn])
+  @@map("correo_outbox")
 }

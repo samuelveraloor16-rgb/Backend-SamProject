@@ -1,0 +1,562 @@
+﻿[
+    {
+        "path":  "docs/RF21_BLOQUE2A.md",
+        "sha256":  "058EA93C1DC94E6B9C1A2EF50645225CD117285EF5E75701C75FD3D7432151BB"
+    },
+    {
+        "path":  "docs/RF21_PREFERENCIAS.md",
+        "sha256":  "AD365BCE6ED2A056C379061CBB545C72CEC32AB134CA11FF2A1FABCFFBEFFBEB"
+    },
+    {
+        "path":  "prisma/migrations/20261125180000_rf21_preferencias/migration.sql",
+        "sha256":  "9BAAB2E45954DB62DACEA574EBDB7D3048B9961B4260842371323AA562866EC1"
+    },
+    {
+        "path":  "src/aplicacion/dtos/preferencias.dto.ts",
+        "sha256":  "BCF89290EB9A335C69C14D57A92EDA93C3D228B5116A8BF4010AF3D2F5626CDB"
+    },
+    {
+        "path":  "src/aplicacion/perfil/preferencias.service.ts",
+        "sha256":  "F9EA8F13D77E4007AFE309DEED896C9EA2E1A2F858B44C8B39891B319ED2D39D"
+    },
+    {
+        "path":  "src/dominio/puertos/preferencias.repository.ts",
+        "sha256":  "93740426C6933BB80529502354C5159CBE3452F3F75C5B12AE2008D7F25A82AC"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-preferencias.repository.spec.ts",
+        "sha256":  "1879BCCC12A65FE05C3C21AC6F4CAEF9AB460CD5296D48DC219AC77312C86215"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-preferencias.repository.ts",
+        "sha256":  "3328C92150DD1B62A72B3FEC5BDBA6668D5016EE32792C87826A2723735B6522"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf21.push-preferencias.spec.ts",
+        "sha256":  "6E15B175395219E6D5EABB6B807E7DD59F8AEAB92C8826D70989877BE21B8A1C"
+    },
+    {
+        "path":  "src/interfaces/http/preferencias.controller.ts",
+        "sha256":  "E699C31C0C244D14CF82ACE244FE5BA70F9A7F854C6F8AB978F4710B62660642"
+    },
+    {
+        "path":  "src/interfaces/http/preferencias.spec.ts",
+        "sha256":  "8736838E942858C84505966A8F2DE14194DAA092BE47B13842AF2A8A869F6670"
+    },
+    {
+        "path":  ".env.example",
+        "sha256":  "7E3DE08F50903D34C203D1D444BA19475CCE488CA9B89420B7567261CE69771F"
+    },
+    {
+        "path":  ".github/workflows/ci.yml",
+        "sha256":  "E5F4D914990C1DB7DAB423FEE5CA80BCFA011EDB6E9436677EFD3294AB8970D3"
+    },
+    {
+        "path":  ".gitignore",
+        "sha256":  "37337059D6D496E3D3537BB07888EA3F9F833C6657D63B8BD22BFE634F909039"
+    },
+    {
+        "path":  ".prettierrc",
+        "sha256":  "A457EDCD871673DD80C983CDC064607C8B1B211296F1F5ECCA764920CDA0C267"
+    },
+    {
+        "path":  "README.md",
+        "sha256":  "4CF002B0100A4C5836AA65C6E9663D3A47BA76A1F4D3AD649D69AC4C8D1B2F92"
+    },
+    {
+        "path":  "docs/RF20_INCREMENTO3.md",
+        "sha256":  "2FE828E84716221D07A4AA15BC5579A5218123120969B3C6DF759FFD6A53471A"
+    },
+    {
+        "path":  "docs/RF20_INCREMENTO4.md",
+        "sha256":  "A2BBD9DF678265CE1713F8241F61CB6552B39693425B3A704C9C7764C357FE8E"
+    },
+    {
+        "path":  "docs/RF20_INCREMENTO5.md",
+        "sha256":  "0B1D2CFB3DCAD8FAB68520408FB5018E092200E6F16E2A8A4659AF3F0067D486"
+    },
+    {
+        "path":  "docs/RF20_INCREMENTO6.md",
+        "sha256":  "D4ECA90CDAB7E65575197BDD0EED376CE9439F7FC597784229D34813B1ACD9DA"
+    },
+    {
+        "path":  "docs/RF20_INCREMENTO7.md",
+        "sha256":  "B59452634B913324F199AED2B987E41A3E9F690DFA1F86A650126E38760A63F2"
+    },
+    {
+        "path":  "eslint.config.mjs",
+        "sha256":  "191BE4931558403788E6616B42ABDD09E08FBE37307506E7E8010BFEED907FBA"
+    },
+    {
+        "path":  "jest.config.js",
+        "sha256":  "8613FA57A2516FF5035A9CDE382635EEE2BF6A6CF310B94E8EC2DA01101AE190"
+    },
+    {
+        "path":  "nest-cli.json",
+        "sha256":  "923A037EBAF2BC590C7AE65359551C6476E30AB79F854A03C29704B7F0817F5C"
+    },
+    {
+        "path":  "package-lock.json",
+        "sha256":  "03FB337A62DD56BC91416AA68335BC32C261A1E812B2E0D6897932EAA0ED6F2A"
+    },
+    {
+        "path":  "package.json",
+        "sha256":  "2C580777DFA3E1829747301942783BE1A4D13249B0DE8ED0CC1D055CE99FD5F2"
+    },
+    {
+        "path":  "prisma.config.ts",
+        "sha256":  "E70650F803529A4EC647BDAD3D89FDDB6C4AA91CFF9B2FA2EA58774BECDB6AE3"
+    },
+    {
+        "path":  "prisma/migrations/20261117232918_init/migration.sql",
+        "sha256":  "0D7B1E20A09E8FE79AF2FEAD3B50E8CA88C48982D1AC543E227B5D4EB12A46A0"
+    },
+    {
+        "path":  "prisma/migrations/20261120000000_rf19/migration.sql",
+        "sha256":  "6A1A212132FD14C3989C0BC76B4BDDC513E6D35A5F10A7D987A7821F077DC1F5"
+    },
+    {
+        "path":  "prisma/migrations/20261121000000_idempotencia_generacion/migration.sql",
+        "sha256":  "1D40D1E7864ECBCC3F26F4536A960EF2E8BA25C5B03F0DBBDBE276F730241B4C"
+    },
+    {
+        "path":  "prisma/migrations/20261125120000_rf20_push_persistence/migration.sql",
+        "sha256":  "CD16585CC5E39219E77ED89B9886BD048798B21509636A8251D479A6315DA0CA"
+    },
+    {
+        "path":  "prisma/migrations/20261125130000_rf20_dispatch_journal/migration.sql",
+        "sha256":  "17D1D466686CA391DB32EBE81BAEB54EB938E463AE80D3ABE039C6AD434CE667"
+    },
+    {
+        "path":  "prisma/migrations/migration_lock.toml",
+        "sha256":  "99836963713B4F5B269AD49AF0ED3D7B0B2E336115C2F92DC9AC683D139D0900"
+    },
+    {
+        "path":  "prisma/schema.prisma",
+        "sha256":  "B8F32D299064DE37ACA96DC6F8AD1B61A8E277789C7DD6A3B4DB3A18F8E5C9AF"
+    },
+    {
+        "path":  "scripts/ensure-pg.cjs",
+        "sha256":  "0D78D5C6D14B167F044563E30D5BE5B064F684D8223DDC515073EB392024C8A4"
+    },
+    {
+        "path":  "src/aplicacion/auth/auth.service.spec.ts",
+        "sha256":  "02F41FDE13BD783E9DFC4EC36D13EA9A0E3884A5A827AC46244280D39E6D61EA"
+    },
+    {
+        "path":  "src/aplicacion/auth/auth.service.ts",
+        "sha256":  "09B1F069B0340FD9B88FB62A5A350ECF662937A0055F6237225658CFDFB11529"
+    },
+    {
+        "path":  "src/aplicacion/comentarios/comentarios.service.spec.ts",
+        "sha256":  "894B689641A9A6A997A8BF5BB736143476D38864EC5E74C8F53E1B91F2C9B6C8"
+    },
+    {
+        "path":  "src/aplicacion/comentarios/comentarios.service.ts",
+        "sha256":  "6681DC02773383416DC892A944FAB7DA4DF6666ACAD03867FD2F1F819A23BE22"
+    },
+    {
+        "path":  "src/aplicacion/comun/acceso-espacio.ts",
+        "sha256":  "520935F7A89003D5257EC686F67C0E2F97711D429053223DEABE04E90130CE85"
+    },
+    {
+        "path":  "src/aplicacion/comun/calendario-rango.ts",
+        "sha256":  "A09249B2A95B4128E8920FCAE919BDAF087E91715156BA2BE2DD61645EED2C37"
+    },
+    {
+        "path":  "src/aplicacion/comun/paginacion.ts",
+        "sha256":  "DF2A85EE14C7C7CB7BD3B2CE70EF1BF12E3DC2D0D5356BE35C2B1DD5F656FF83"
+    },
+    {
+        "path":  "src/aplicacion/dispositivos/dispositivos.service.ts",
+        "sha256":  "0733822274836F3B43571C9FFAB011383C8E9DD52211B9E612FA3518DDF0C5ED"
+    },
+    {
+        "path":  "src/aplicacion/dtos/actualizar-perfil.dto.ts",
+        "sha256":  "2B64F3754D5D5902C6AE8D4D9550673103FFAF15BF377BA475B51B5C033705D3"
+    },
+    {
+        "path":  "src/aplicacion/dtos/auth-dtos.spec.ts",
+        "sha256":  "789DB2BA63566E07EC9271460073F4B2F950A8DDE48EE8EAB7D9CBBD8420B62F"
+    },
+    {
+        "path":  "src/aplicacion/dtos/cambiar-password.dto.ts",
+        "sha256":  "2ADD70B553707BD94605E2BD41BC1A9E11C929D9C35113482267BD3A245C35EE"
+    },
+    {
+        "path":  "src/aplicacion/dtos/dispositivo-dtos.ts",
+        "sha256":  "4D78C4700C47A512487071DA1A5262C2A7BFCF43611C3DC85FF0C45AC6E27B15"
+    },
+    {
+        "path":  "src/aplicacion/dtos/espacio-dtos.ts",
+        "sha256":  "78EB980D919E842A7F1DD979672EA4B217F7F89559F1F5A2241B500AD90EA7F8"
+    },
+    {
+        "path":  "src/aplicacion/dtos/login.dto.ts",
+        "sha256":  "8C51EDA05E7C7A7CE9270B02E6029FAA94F8F3A6918B499374F796AF175F526F"
+    },
+    {
+        "path":  "src/aplicacion/dtos/proyecto-dtos.ts",
+        "sha256":  "8DEEA67BAD59112A9517FBC4EFF57C35660C401F6ABD7F807AD53AB1BC353EAB"
+    },
+    {
+        "path":  "src/aplicacion/dtos/recuperar-password.dto.ts",
+        "sha256":  "AB9A8BB712C4305B4704C354AEA18BE277CCB1BFA57E05F6FAB759974F3C3E6A"
+    },
+    {
+        "path":  "src/aplicacion/dtos/registro-usuario.dto.ts",
+        "sha256":  "F2EB16ADA34AE77DE6253A1349FF3699606ED1851AA907C05C8F04B803560CA9"
+    },
+    {
+        "path":  "src/aplicacion/dtos/restablecer-password.dto.ts",
+        "sha256":  "3F7CE658F2D4A76E202C8817C4B40D7072E015D5A182CF67CF97351DC1CAD1B9"
+    },
+    {
+        "path":  "src/aplicacion/dtos/tarea-dtos.ts",
+        "sha256":  "FB15525FC63B7C7DE55C02FCD0440DB205519C63C1BA2A196C6FCE8B2B563DD9"
+    },
+    {
+        "path":  "src/aplicacion/espacios/espacios.calendario.spec.ts",
+        "sha256":  "B6A75F6F7C2813D5B888D87C3D6B0B7A4C564754F9D717B393B105A1F8646CF4"
+    },
+    {
+        "path":  "src/aplicacion/espacios/espacios.service.spec.ts",
+        "sha256":  "27D443AB271C3252666B4E6C4414B0BDBC0B23299DDA0643425E25A9685BC886"
+    },
+    {
+        "path":  "src/aplicacion/espacios/espacios.service.ts",
+        "sha256":  "DD396597669FF66200302483D5FAC27569096CDD27C3FFEDD899DC40A7EA29D0"
+    },
+    {
+        "path":  "src/aplicacion/etiquetas/etiquetas.service.spec.ts",
+        "sha256":  "C706893CCB942D83968C4884509920A64738F186DBAC4E63F45BFBF133713154"
+    },
+    {
+        "path":  "src/aplicacion/etiquetas/etiquetas.service.ts",
+        "sha256":  "3BBF8AD53C8D0153C63840B3CE289B6F8622D44739ECCE2B57FCF546A692A1AB"
+    },
+    {
+        "path":  "src/aplicacion/perfil/perfil.service.spec.ts",
+        "sha256":  "22DF09A059ABD40BA5F36D67BDC8A2241F9BEADFDF997830DABD17CFC13D3B8E"
+    },
+    {
+        "path":  "src/aplicacion/perfil/perfil.service.ts",
+        "sha256":  "29AFD728007F4FFDA78D2F58C0EA2AF35DB09CF2DD80D5DB456C60F91A1F1D94"
+    },
+    {
+        "path":  "src/aplicacion/proyectos/proyectos.service.spec.ts",
+        "sha256":  "FAC70EE2E96A7CE1220E1F0ACE7ADE0E9AD92B3C63AB7CDE8078BCDF355106E4"
+    },
+    {
+        "path":  "src/aplicacion/proyectos/proyectos.service.ts",
+        "sha256":  "CC3869AFEBF4DBA69DF70A0DE443BCFF0DDB1590C0E2D4A11E5A47BC576433CA"
+    },
+    {
+        "path":  "src/aplicacion/push/detector-vencimientos.ts",
+        "sha256":  "F4A3BB318CEF072B9A66085CBE02C5DA20C7BD3F3D8BA46A000C2D6FC52DBF6D"
+    },
+    {
+        "path":  "src/aplicacion/push/push-coordinator.spec.ts",
+        "sha256":  "DC4BF5307ECB0171E00D5D880F6E1D3474064A4327354854FDA379F6272FF58C"
+    },
+    {
+        "path":  "src/aplicacion/push/push-coordinator.ts",
+        "sha256":  "D4A99BE481147D5C758BA2D6EB09B1F1A3E9A8E5EF4C2968F55B6C00315DB1CB"
+    },
+    {
+        "path":  "src/aplicacion/push/push-dispatcher.spec.ts",
+        "sha256":  "42E1D81A7B00B0A0BAD7835D126BEB76E263C6F39E54513F9C53EB4DEE9D7096"
+    },
+    {
+        "path":  "src/aplicacion/push/push-dispatcher.ts",
+        "sha256":  "9530A5A0919AB9686D422FE7B7434FA2508A3A546FE58F8CE3C3CFE4E7C7A5B7"
+    },
+    {
+        "path":  "src/aplicacion/tareas/tareas.service.spec.ts",
+        "sha256":  "CCF0ADAC0295536F95E0FF9F61D14FBCD0C00D4A7DC8821238DD9AEA870E1955"
+    },
+    {
+        "path":  "src/aplicacion/tareas/tareas.service.ts",
+        "sha256":  "164D89F0FCFC1B887196CE3ECBBD9403A3B90232E74618E25FC5F498DDB16C89"
+    },
+    {
+        "path":  "src/app.module.ts",
+        "sha256":  "77912FA7AD5EFF402321919500254B7190D664957C54C1DE8040CB17DB4A1061"
+    },
+    {
+        "path":  "src/dominio/comentarios/menciones.spec.ts",
+        "sha256":  "ADB1396B67889D530042D4E97AE4B99122D86C9F9BECCA6BADD8E3AC0DACDD8C"
+    },
+    {
+        "path":  "src/dominio/comentarios/menciones.ts",
+        "sha256":  "355FE4302C4908DFCE6F7CFF557DF390244809A7BCD272276065F49B0D2B43D0"
+    },
+    {
+        "path":  "src/dominio/metricas/progreso.spec.ts",
+        "sha256":  "B18251D1819C5729A20D37CC21531CDDD2EB986CCB7669AF89FE3E3EC231CE80"
+    },
+    {
+        "path":  "src/dominio/metricas/progreso.ts",
+        "sha256":  "40E96B88D2AEDFA0811D55CC86C55C290D9E4639E2363473B6963701E4E46D7E"
+    },
+    {
+        "path":  "src/dominio/puertos/comentarios.repository.ts",
+        "sha256":  "4D65A90765CB0F7A46B926699A568EB019B203CC2433A8A15D65EEB25230DD2F"
+    },
+    {
+        "path":  "src/dominio/puertos/dispositivo.repository.ts",
+        "sha256":  "4E8F7AE5A94FADDCB914862A26066F1C32BB0A112053632DAA6EB730E0DA316C"
+    },
+    {
+        "path":  "src/dominio/puertos/espacio.repository.ts",
+        "sha256":  "3E39CE215824982AFA75DC5A717281B7AF5BB962D8960D800F9178C669A67D5E"
+    },
+    {
+        "path":  "src/dominio/puertos/etiqueta.repository.ts",
+        "sha256":  "A359FF79E3465CA23B2D1BF08D8EBEB5D36A1B3E86D153E7C43E6BBE10CFD716"
+    },
+    {
+        "path":  "src/dominio/puertos/mailer.port.ts",
+        "sha256":  "01CC1106A41D4BFD45B75FCEDE617B6C866F4CC84AE12A3F65376EEBE7E0484E"
+    },
+    {
+        "path":  "src/dominio/puertos/password-hasher.port.ts",
+        "sha256":  "15EECBE90CE69A6872A8B48E498BC6050578AF3CF68E3A42C409FE72DDAABB03"
+    },
+    {
+        "path":  "src/dominio/puertos/proyecto.repository.ts",
+        "sha256":  "2EDD7B22EF03BD74A45A44CA8F32758A3F6729F4E0B044039891549B618A7B3B"
+    },
+    {
+        "path":  "src/dominio/puertos/push-dispatch.repository.ts",
+        "sha256":  "3A4C8120D39FAC0044C95D8D3734F526EA18BDD5F24A0CD805A352EDEFCC5F38"
+    },
+    {
+        "path":  "src/dominio/puertos/push-outbox.repository.ts",
+        "sha256":  "0FBFCD02D48571C5DE5588D482DEFCE9C54F28901E3C8A1C8576F36CF15485B7"
+    },
+    {
+        "path":  "src/dominio/puertos/push-provider.ts",
+        "sha256":  "FFFB3C55FC6FFB6626ECBED29E75A0A1C2CE2D1E4E3EE94F61BED60ADEC35B77"
+    },
+    {
+        "path":  "src/dominio/puertos/tarea.repository.ts",
+        "sha256":  "714E5B64EF6E6A4DB882856DB2B14148ABA4F404B40B9B04A2A6FC889DB39E1B"
+    },
+    {
+        "path":  "src/dominio/puertos/token-service.port.ts",
+        "sha256":  "AC3D2D18CAAEB888F3F2449D35265E854ADD176C13CD9772BF2B086F969D40A4"
+    },
+    {
+        "path":  "src/dominio/puertos/usuario.repository.ts",
+        "sha256":  "17E2A6A778E4DA024562A827604797CD24DF6FC65E49ACA7EDE9034C18AC2C9D"
+    },
+    {
+        "path":  "src/dominio/puertos/vencimientos.repository.ts",
+        "sha256":  "DF8847051F117B628EEBD4F2FC1756C1FFDA61904C65B8FD854D3F572772CE03"
+    },
+    {
+        "path":  "src/infraestructura/correo/smtp-mailer.ts",
+        "sha256":  "6E4638F5EAFD11CDC3AA848C6A719CE05EF7F8FEA44720D23878B0946FF3A234"
+    },
+    {
+        "path":  "src/infraestructura/mantenimiento/limpiar-idempotencias.spec.ts",
+        "sha256":  "8F589FE5F1541CE85DF9F45A1F2B8500DB024AA1DA4002C77A096825865C55FA"
+    },
+    {
+        "path":  "src/infraestructura/mantenimiento/limpiar-idempotencias.ts",
+        "sha256":  "33F954DAE33350EE2B72BA989339CF417875C1FC3E1B85C414FCE64250B8E045"
+    },
+    {
+        "path":  "src/infraestructura/prisma/errores-transitorios.spec.ts",
+        "sha256":  "95A83E9C2A9EFAEA2F4A0C806FDB6910DABA511CE79DCBF2BA1720075C249F44"
+    },
+    {
+        "path":  "src/infraestructura/prisma/errores-transitorios.ts",
+        "sha256":  "7786EB5FAD99A27981404526EF9F3AE640F7DDBDBE98F48B1F0BBD414E464E18"
+    },
+    {
+        "path":  "src/infraestructura/prisma/prisma.module.ts",
+        "sha256":  "9223A0889ABB0669020E94A9B8C1E68274CDC05533C1F79D84FE516450E94EBD"
+    },
+    {
+        "path":  "src/infraestructura/prisma/prisma.service.ts",
+        "sha256":  "1CFE57BF36A5E34878FA98489DEB590E57DDD22F96AD151079FC2096DB13D31D"
+    },
+    {
+        "path":  "src/infraestructura/push/expo-push.provider.spec.ts",
+        "sha256":  "E1BBC6FC0DF2F54A9E19D7BBBAF20024911574E32F47CC53E3D5476D8A80F99B"
+    },
+    {
+        "path":  "src/infraestructura/push/expo-push.provider.ts",
+        "sha256":  "931BBE7E5D7C6098AC4715E072D135B92953EBE634B686558BEADA3D36C5B5AA"
+    },
+    {
+        "path":  "src/infraestructura/push/prisma-push-dispatch.repository.spec.ts",
+        "sha256":  "B2F2F73E7023F63A557EC5758BE99CB6BE033BF593A885D4223296BB271EF7B6"
+    },
+    {
+        "path":  "src/infraestructura/push/prisma-push-dispatch.repository.ts",
+        "sha256":  "0588F0BC187D973100C82B70524FB6D8D4D34B4AE0F3DC853221256724A75EF1"
+    },
+    {
+        "path":  "src/infraestructura/push/push-scheduler.spec.ts",
+        "sha256":  "10E0A761C64918F4AF6EAF6E783B13462B059FAC939B058AC5531FB7FA5B5F6F"
+    },
+    {
+        "path":  "src/infraestructura/push/push-scheduler.ts",
+        "sha256":  "3A691AA3F5AD150027871FA9AF44D02AC65F45FD7A5F7AEC62281A4AB412F473"
+    },
+    {
+        "path":  "src/infraestructura/push/push-scheduling.module.ts",
+        "sha256":  "232447F8AE7515B65270D2ECD80AD51AFDA704FBC519CFB7EFD50493022235A7"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-comentarios.errores.spec.ts",
+        "sha256":  "86039A1C36E138C2B350720303B63F58F3093856435DE85E6570F30FAB5A887A"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-comentarios.repository.ts",
+        "sha256":  "1D842F79DB5311D09EC2A13879BB7C7529FD67EAA2CD2CAE8A749C3F91F7A2B5"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-dispositivo.repository.ts",
+        "sha256":  "91104A3C497001FC276A1CF51233E6629F3C97E140FA8DBD624B9E1727DAF79A"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-espacio.repository.ts",
+        "sha256":  "62FB2EA6FC8D66B1502583CCAFD05C0FBF2C5F65A17ED54D8DA234588DBDDABC"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-etiqueta.repository.ts",
+        "sha256":  "224FA7A68F18C3B39C9C9A74D552368915FC76348B402B89CA19708C7DED9604"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-proyecto.repository.ts",
+        "sha256":  "717B41FFA2AF0D5EAC00416B0D0716B4DDC45A253E6007D1EA1BF500572CFED4"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-push-outbox.repository.ts",
+        "sha256":  "4D8A2492EF45BAEB7CA27CA842EF875AA4848A178FCFADDE22B012F6A19546FD"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-tarea.repository.ts",
+        "sha256":  "B5F58CE18BAC653BE3128F1EF3D3919EFF4EFBE9CB80E05CD17332FC6FE84937"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-tarea.retry.spec.ts",
+        "sha256":  "363D5710213A3EDF072E38D898D6B8F8A6C2EF20695C7C4A4BC5D34E3F8E38DE"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-usuario.repository.ts",
+        "sha256":  "1359560C4E6633A762FCC6639AA31C63D4A49F12FF117740B09C94EFC6C4C668"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-vencimientos.repository.spec.ts",
+        "sha256":  "3665576D018917739AC136B6A8D306F7C04EB3C7327BCB1D6E1F99AD8162773D"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-vencimientos.repository.ts",
+        "sha256":  "8E06F9724EC5A306A0813B36EB05A1CC682BFD48B8AD65856EDE15864A115D85"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/push-persistence.module.ts",
+        "sha256":  "70277CEE7E732F35B52270E07E13B2D27BDA616554E8D475E43B85A9C1881416"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf03.integration.spec.ts",
+        "sha256":  "06A11BD5B94492F532D95A36E44B059EFBEF6D77F3BCA5FFF04385B8ECF63A09"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf19.integration.spec.ts",
+        "sha256":  "F362B24003E748074513F5FE42277A4EEDDAC1E67207D07213C3CAF59F555693"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf20.asignaciones.spec.ts",
+        "sha256":  "2380F67A357ECEA05A8C2840C126D1597092A446EF1A266829A1288623DC0466"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf20.comentarios.spec.ts",
+        "sha256":  "9E1E084D1CF658A19A98DBB7506667072ED2B7C27B65BD79CC3652249F0C7C17"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf20.persistence.spec.ts",
+        "sha256":  "AC47D674A29F960744BE85A3B1CBD40B473F3C97CC6745F56EACB88D105CFC95"
+    },
+    {
+        "path":  "src/infraestructura/seguridad/bcrypt-password-hasher.ts",
+        "sha256":  "34AF7475E721DB6B0BE79DCF602339AB1AC2898A5C5C4D2B481E3E94861AA891"
+    },
+    {
+        "path":  "src/infraestructura/seguridad/huella-comentario.spec.ts",
+        "sha256":  "91D9BA44872BFDB24AB3CC8AB7327A2FD25044765EA9B276FAE77534A69DE809"
+    },
+    {
+        "path":  "src/infraestructura/seguridad/huella-comentario.ts",
+        "sha256":  "521F351F9B164F9418548FF22EF769165093A47A090FD68AECB8A81FC9EE91DC"
+    },
+    {
+        "path":  "src/infraestructura/seguridad/jwt-token.service.ts",
+        "sha256":  "26E664E90803ADC17A1910AFAE1B0D5B1E4CBE8403BD49F943EBA81FC103EA63"
+    },
+    {
+        "path":  "src/interfaces/http/auth.controller.ts",
+        "sha256":  "21B09D99920DE7A582E99AA7A9186ADCC8D40F01CB9CEAE27B72124E40E1AE93"
+    },
+    {
+        "path":  "src/interfaces/http/comentarios.controller.ts",
+        "sha256":  "CC15A075912FD893064CC5B83AB705A044F360D877A51F382E48A24A9CE61C4A"
+    },
+    {
+        "path":  "src/interfaces/http/current-user.decorator.ts",
+        "sha256":  "53A2F4FD62461FB6604912776BB788D8EDA8006B40ED6823AC56C62A273F9336"
+    },
+    {
+        "path":  "src/interfaces/http/dispositivos.controller.ts",
+        "sha256":  "8371062BD595FEB026081524EA2B70380219C532D2E9E01C6D5E3435F6F33F06"
+    },
+    {
+        "path":  "src/interfaces/http/dispositivos.spec.ts",
+        "sha256":  "F8F6300EEB60598771C43CD95AA8AFD5AF7699CEB68BDDC564BB2A4F23F154EA"
+    },
+    {
+        "path":  "src/interfaces/http/espacios.controller.ts",
+        "sha256":  "315637F356AFA7BF9E315E4823D01B21A8EAF552FEFBD70460E18EA0B164A0C1"
+    },
+    {
+        "path":  "src/interfaces/http/etiquetas.controller.ts",
+        "sha256":  "470963BFCCE0CECD0A47F78639B15BD89745661A45AAD7A86740B0FC736909FD"
+    },
+    {
+        "path":  "src/interfaces/http/http-exception.filter.ts",
+        "sha256":  "E35360D5193AFA4F107DF090F30D3FE1D323C9468F9341F8577B7925F2A8B220"
+    },
+    {
+        "path":  "src/interfaces/http/jwt-auth.guard.ts",
+        "sha256":  "51FC903FFA25CB72C7ECC1AA1FED8C9D5BF7C6DD2F7F0EFE9D5FA1D7490B020C"
+    },
+    {
+        "path":  "src/interfaces/http/jwt.strategy.ts",
+        "sha256":  "AF0A2F70B899FFD74145FB0C0882B7AE03F4ACA7E72ACE899953C90D1DF6F337"
+    },
+    {
+        "path":  "src/interfaces/http/perfil.controller.ts",
+        "sha256":  "4AB1EA064B18ACAA590EAAE285E1160F9F44F0C28AA0354368F5205BAF4CC7E4"
+    },
+    {
+        "path":  "src/interfaces/http/proyectos.controller.ts",
+        "sha256":  "8433C4B537F16DBF11689D54B154F4BE406B2EA7AEEE97188AA1A8A3DF0AE051"
+    },
+    {
+        "path":  "src/interfaces/http/tareas.controller.ts",
+        "sha256":  "7396093CADBEC4FF4D661FC8536E9DB8E1763F3AB99508E1E86DBC5E94349312"
+    },
+    {
+        "path":  "src/main.ts",
+        "sha256":  "56D0F46A66F525CDD9F84FA915ADD3B015ADA313EE688B3A60F6BAAA28F315BE"
+    },
+    {
+        "path":  "tsconfig.json",
+        "sha256":  "FB77F8049218FB5E5797053E30C229634025D144608DAFC076432D445F25BA55"
+    }
+]

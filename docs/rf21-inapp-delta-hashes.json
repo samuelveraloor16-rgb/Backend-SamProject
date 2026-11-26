@@ -1,0 +1,37 @@
+﻿[
+    {
+        "path":  "prisma/schema.prisma",
+        "before":  "B8F32D299064DE37ACA96DC6F8AD1B61A8E277789C7DD6A3B4DB3A18F8E5C9AF",
+        "after":  "E962458C210816E84AC17C10CCB94660EE8A96CE4007391AC3265ABFC8C72D66"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-comentarios.repository.ts",
+        "before":  "1D842F79DB5311D09EC2A13879BB7C7529FD67EAA2CD2CAE8A749C3F91F7A2B5",
+        "after":  "D5C6E77F96D98B2D814ED83555FB46487EC3E45BA2AA9F4B9A16680D3C2D0853"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-tarea.repository.ts",
+        "before":  "B5F58CE18BAC653BE3128F1EF3D3919EFF4EFBE9CB80E05CD17332FC6FE84937",
+        "after":  "D26EC627486A6BC823FA343B45E2FF85E7A23E6D8673F3D70D730900FDE4DFE7"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-vencimientos.repository.spec.ts",
+        "before":  "3665576D018917739AC136B6A8D306F7C04EB3C7327BCB1D6E1F99AD8162773D",
+        "after":  "39A0E90CFA437FDFBF8DE17FE4449F456E300220F2321D38A4BB04587822A13B"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/prisma-vencimientos.repository.ts",
+        "before":  "8E06F9724EC5A306A0813B36EB05A1CC682BFD48B8AD65856EDE15864A115D85",
+        "after":  "964C6FCBBDD2ECFB1170D915BCB844D7338F233D22C079045759182FC840CA20"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf20.asignaciones.spec.ts",
+        "before":  "2380F67A357ECEA05A8C2840C126D1597092A446EF1A266829A1288623DC0466",
+        "after":  "D48CEFD3AFDF5D8523EB8EB014370BF8684E5DB71CD319D0BB2083BEC57E01D9"
+    },
+    {
+        "path":  "src/infraestructura/repositorios/rf20.comentarios.spec.ts",
+        "before":  "9E1E084D1CF658A19A98DBB7506667072ED2B7C27B65BD79CC3652249F0C7C17",
+        "after":  "11B91239D4BE96F6F799CB6EAC61B7AB07E55C26D4463C81D204BFF67BD402E7"
+    }
+]

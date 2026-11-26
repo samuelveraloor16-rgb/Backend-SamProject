@@ -1,6 +1,7 @@
 import type { CandidatoVencimiento, VencimientosRepository } from '../../dominio/puertos/vencimientos.repository';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaPushOutboxRepository } from './prisma-push-outbox.repository';
+import { registrarAviso } from './prisma-inapp.repository';
 
 export class PrismaVencimientosRepository implements VencimientosRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -34,10 +35,12 @@ export class PrismaVencimientosRepository implements VencimientosRepository {
       });
       if (!tarea?.fechaLimite || tarea.fechaLimite.getTime() - 86400000 > ahora.getTime()) return false;
       const vencida = tarea.fechaLimite.getTime() <= ahora.getTime();
-      return new PrismaPushOutboxRepository(this.prisma).enTransaccion(tx).encolar({
+      const evento = {
         claveUnica: `${vencida ? 'vencfin' : 'venc24'}:${c.id}:${c.responsableId}:${tarea.fechaLimite.toISOString()}`,
-        usuarioId: c.responsableId, tareaId: c.id, tipo: vencida ? 'TAREA_VENCIDA' : 'TAREA_POR_VENCER',
-      });
+        usuarioId: c.responsableId, tareaId: c.id, tipo: vencida ? 'TAREA_VENCIDA' as const : 'TAREA_POR_VENCER' as const,
+      };
+      await registrarAviso(tx, evento);
+      return new PrismaPushOutboxRepository(this.prisma).enTransaccion(tx).encolar(evento);
     }, { isolationLevel: 'Serializable' });
   }
 }

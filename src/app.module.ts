@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { PreferenciasController } from './interfaces/http/preferencias.controller';
+import { PreferenciasService } from './aplicacion/perfil/preferencias.service';
+import { PREFERENCIAS_REPOSITORY } from './dominio/puertos/preferencias.repository';
+import { PrismaPreferenciasRepository } from './infraestructura/repositorios/prisma-preferencias.repository';
 import { PushSchedulingModule } from './infraestructura/push/push-scheduling.module';
 import { DispositivosService } from './aplicacion/dispositivos/dispositivos.service';
 import { DispositivosController } from './interfaces/http/dispositivos.controller';
@@ -62,8 +66,10 @@ import { MAILER } from './dominio/puertos/mailer.port';
     PushPersistenceModule,
     PushSchedulingModule,
   ],
-  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController, DispositivosController],
+  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController, DispositivosController, PreferenciasController],
   providers: [
+    PreferenciasService,
+    { provide: PREFERENCIAS_REPOSITORY, useClass: PrismaPreferenciasRepository },
     AuthService,
     DispositivosService,
     PerfilService,

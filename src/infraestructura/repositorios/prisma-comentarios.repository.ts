@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { conErroresTransitorios } from '../prisma/errores-transitorios';
 import { clavesComentario, nuevaHuella, verificarHuella } from '../seguridad/huella-comentario';
 import { PrismaPushOutboxRepository } from './prisma-push-outbox.repository';
+import { registrarAviso } from './prisma-inapp.repository';
 
 type Tx = Prisma.TransactionClient;
 const marcadorPendiente = new Date('9999-12-31T23:59:59.000Z');
@@ -18,11 +19,11 @@ type Comentario = Prisma.ComentarioGetPayload<{ include: typeof comentarioInclud
 function publico(c: Comentario) {
   return { id: c.id, tareaId: c.tareaId, texto: c.texto, autor: c.autor, menciones: c.menciones.map(m => m.usuario), creadoEn: c.creadoEn, actualizadoEn: c.actualizadoEn };
 }
-const avisoInclude = { comentario: { include: { tarea: { include: { proyecto: true } } } } } as const;
+const avisoInclude = { tarea: { include: { proyecto: true } }, comentario: { include: { tarea: { include: { proyecto: true } } } } } as const;
 type Aviso = Prisma.NotificacionGetPayload<{ include: typeof avisoInclude }>;
 function aviso(n: Aviso) {
-  const c = n.comentario!;
-  return { id: n.id, tipo: n.tipo, titulo: n.titulo, cuerpo: n.cuerpo, leida: n.leida, datos: { espacioId: c.tarea.proyecto.espacioId, proyectoId: c.tarea.proyectoId, tareaId: c.tarea.id, comentarioId: c.id }, creadoEn: n.creadoEn };
+  const t = n.comentario?.tarea ?? n.tarea!;
+  return { id: n.id, tipo: n.tipo, titulo: n.titulo, cuerpo: n.cuerpo, leida: n.leida, datos: { espacioId: t.proyecto.espacioId, proyectoId: t.proyectoId, tareaId: t.id, comentarioId: n.comentarioId }, creadoEn: n.creadoEn };
 }
 
 /** Los locks de fila SHARE chocan con DELETE/UPDATE normales ya usados por RF anteriores. */
@@ -50,8 +51,21 @@ async function visible(tx: Tx, tareaId: string, usuarioId: string) {
   if (!t) throw new NotFoundException('Tarea no encontrada');
   return t.proyecto.espacioId;
 }
-function whereAviso(usuarioId: string, leida?: boolean): Prisma.NotificacionWhereInput {
-  return { usuarioId, tipo: 'MENCION', ...(leida === undefined ? {} : { leida }), comentario: { is: { menciones: { some: { usuarioId } }, tarea: { proyecto: { espacio: { membresias: { some: { usuarioId } } } } } } } };
+async function whereAviso(tx: Tx, usuarioId: string, leida?: boolean): Promise<Prisma.NotificacionWhereInput> {
+  // Igualdad de referencias entre filas no expresable por filtros relacionales Prisma.
+  // Legacy solo MENCION con comentario/mención reales; nunca datos JSON.
+  const ids = await tx.$queryRaw<{ id: string }[]>`SELECT n."id" FROM "notificaciones" n
+    LEFT JOIN "comentarios" c ON c."id" = n."comentarioId"
+    JOIN "tareas" t ON t."id" = COALESCE(n."tareaId", c."tareaId")
+    JOIN "proyectos" p ON p."id" = t."proyectoId"
+    JOIN "membresias" m ON m."espacioId" = p."espacioId" AND m."usuarioId" = ${usuarioId}
+    WHERE n."usuarioId" = ${usuarioId} AND p."eliminadoEn" IS NULL AND (
+      (n."tipo" IN ('MENCION', 'COMENTARIO') AND c."tareaId" = t."id"
+        AND (n."tareaId" IS NOT NULL OR n."tipo" = 'MENCION')
+        AND (n."tipo" <> 'MENCION' OR EXISTS (SELECT 1 FROM "menciones" mm WHERE mm."comentarioId" = c."id" AND mm."usuarioId" = ${usuarioId})))
+      OR (n."tipo" IN ('TAREA_ASIGNADA', 'TAREA_POR_VENCER', 'TAREA_VENCIDA') AND n."comentarioId" IS NULL AND n."tareaId" = t."id")
+    )`;
+  return { usuarioId, id: { in: ids.map(n => n.id) }, ...(leida === undefined ? {} : { leida }) };
 }
 
 @Injectable()
@@ -85,7 +99,7 @@ export class PrismaComentariosRepository implements ComentariosRepository {
           const rows = await tx.$queryRaw<{ usuarioId: string }[]>`SELECT "usuarioId" FROM "membresias" WHERE "espacioId" = ${proyecto.espacioId} AND "usuarioId" = ${id} FOR SHARE`;
           if (!rows.length) throw new BadRequestException('Uno o más destinatarios no son válidos');
         }
-        const c = await tx.comentario.create({ data: { tareaId, autorId: usuarioId, texto, menciones: { create: menciones.map((id, posicion) => ({ usuarioId: id, posicion })) }, notificaciones: { create: menciones.filter(id => id !== usuarioId).map(id => ({ usuarioId: id, tipo: 'MENCION', titulo: 'Te mencionaron' })) } }, include: comentarioInclude });
+        const c = await tx.comentario.create({ data: { tareaId, autorId: usuarioId, texto, menciones: { create: menciones.map((id, posicion) => ({ usuarioId: id, posicion })) } }, include: comentarioInclude });
         // D-21: hasta 20 mencionados + responsable adicional. La tarea SHARE
         // estabiliza la asignación; usuarios se bloquearon antes de membresías.
         const destinatarios = new Set(menciones);
@@ -99,8 +113,10 @@ export class PrismaComentariosRepository implements ComentariosRepository {
         destinatarios.delete(usuarioId);
         const outbox = new PrismaPushOutboxRepository(this.prisma).enTransaccion(tx);
         for (const id of [...destinatarios].sort()) {
-          await outbox.encolar({ claveUnica: `com:${c.id}:${id}`, usuarioId: id,
-            tipo: menciones.includes(id) ? 'MENCION' : 'COMENTARIO', tareaId, comentarioId: c.id });
+          const evento = { claveUnica: `com:${c.id}:${id}`, usuarioId: id,
+            tipo: menciones.includes(id) ? 'MENCION' as const : 'COMENTARIO' as const, tareaId, comentarioId: c.id };
+          await registrarAviso(tx, evento);
+          await outbox.encolar(evento);
         }
         // Un marcador sin caducidad inmediata es seguro incluso si el proceso cae antes
         // de recibir confirmación del commit. Se fija la caducidad solo después del commit.
@@ -154,20 +170,21 @@ export class PrismaComentariosRepository implements ComentariosRepository {
   }
   async notificaciones(usuarioId: string, page: number, pageSize: number, leida?: boolean) {
     return conErroresTransitorios(() => this.prisma.$transaction(async tx => {
-      const where = whereAviso(usuarioId, leida);
+      const where = await whereAviso(tx, usuarioId, leida);
       const [total, datos] = await Promise.all([tx.notificacion.count({ where }), tx.notificacion.findMany({ where, include: avisoInclude, orderBy: [{ creadoEn: 'desc' }, { id: 'desc' }], skip: (page - 1) * pageSize, take: pageSize })]);
       return envelope(datos.map(aviso), total, page, pageSize);
     }, { isolationLevel: 'RepeatableRead' }));
   }
   async leer(id: string, usuarioId: string) {
     return conErroresTransitorios(() => this.prisma.$transaction(async tx => {
-      const n = await tx.notificacion.findFirst({ where: { ...whereAviso(usuarioId), id }, include: avisoInclude });
-      if (!n?.comentario) throw new NotFoundException('Notificación no encontrada');
-      await bloquearTarea(tx, n.comentario.tareaId, usuarioId);
-      const actual = await tx.notificacion.updateMany({ where: { ...whereAviso(usuarioId), id }, data: { leida: true } });
+      const where = await whereAviso(tx, usuarioId);
+      const n = await tx.notificacion.findFirst({ where: { AND: [where, { id }] }, include: avisoInclude });
+      if (!n || (!n.comentario && !n.tarea)) throw new NotFoundException('Notificación no encontrada');
+      await bloquearTarea(tx, n.comentario?.tareaId ?? n.tarea!.id, usuarioId);
+      const actual = await tx.notificacion.updateMany({ where: { AND: [await whereAviso(tx, usuarioId), { id }] }, data: { leida: true } });
       if (!actual.count) throw new NotFoundException('Notificación no encontrada');
       const resultado = await tx.notificacion.findUnique({ where: { id }, include: avisoInclude });
-      if (!resultado?.comentario) throw new NotFoundException('Notificación no encontrada');
+      if (!resultado || (!resultado.comentario && !resultado.tarea)) throw new NotFoundException('Notificación no encontrada');
       return aviso(resultado);
     }));
   }

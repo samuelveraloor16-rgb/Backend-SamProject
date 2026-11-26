@@ -13,7 +13,7 @@ describe('RF20 persistencia (mocks, sin conexión BD)', () => {
   let repo: PrismaDispositivoRepository;
   const consulta = () => db.$queryRaw.mock.calls.at(-1)[0] as Prisma.Sql;
   beforeEach(() => {
-    db = { $queryRaw: jest.fn(), $transaction: jest.fn(), dispositivo: { findMany: jest.fn(), count: jest.fn(), deleteMany: jest.fn() }, pushOutbox: { createMany: jest.fn(), findMany: jest.fn(), updateMany: jest.fn() } };
+    db = { preferenciaNotificacion: { findUnique: jest.fn(async () => null) }, $queryRaw: jest.fn(), $transaction: jest.fn(), dispositivo: { findMany: jest.fn(), count: jest.fn(), deleteMany: jest.fn() }, pushOutbox: { createMany: jest.fn(), findMany: jest.fn(), updateMany: jest.fn() } };
     repo = new PrismaDispositivoRepository(db as PrismaService);
   });
 
@@ -103,7 +103,7 @@ describe('RF20 persistencia (mocks, sin conexión BD)', () => {
   });
 
   it('encolado usa transacción recibida, no cliente global', async () => {
-    const tx = { pushOutbox: { createMany: jest.fn().mockResolvedValue({ count: 1 }) } };
+    const tx = { preferenciaNotificacion: { findUnique: jest.fn(async () => null) }, pushOutbox: { createMany: jest.fn().mockResolvedValue({ count: 1 }) } };
     await new PrismaPushOutboxRepository(db).enTransaccion(tx as unknown as Prisma.TransactionClient).encolar({ claveUnica: 'com:c:u', usuarioId: 'u', tareaId: 't', comentarioId: 'c', tipo: 'MENCION' });
     expect(tx.pushOutbox.createMany).toHaveBeenCalledTimes(1);
     expect(db.pushOutbox.createMany).not.toHaveBeenCalled();

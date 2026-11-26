@@ -44,6 +44,12 @@ export class PrismaPushDispatchRepository implements PushDispatchRepository {
       const [{ ahora }] = await tx.$queryRaw<[{ ahora: Date }]>`SELECT clock_timestamp() AT TIME ZONE 'UTC' AS ahora`;
       const claim = await tx.pushOutbox.findFirst({ where: { id: fila.id, estado: 'PENDIENTE', intentos: fila.intentos + 1, proximoIntentoEn: { gt: ahora } }, select: { id: true } });
       if (!claim) return null;
+      // Lectura fresca por dispositivo e intento, antes de reservar frecuencia/I/O.
+      // Errores se propagan: el dispatcher conserva el lease y no envía.
+      const preferencia = await tx.preferenciaNotificacion.findUnique({
+        where: { usuarioId_tipo: { usuarioId: fila.usuarioId, tipo: fila.tipo } }, select: { push: true },
+      });
+      if (preferencia?.push === false) return null;
       const d = await tx.dispositivo.findFirst({ where: whereVinculo(v), select: { usuario: { select: { tokenVersion: true } } } });
       if (!d || d.usuario.tokenVersion !== v.tokenVersionVinculado) return null;
       const tarea = await tx.tarea.findFirst({ where: { id: fila.tareaId, proyecto: { eliminadoEn: null, espacio: { membresias: { some: { usuarioId: fila.usuarioId } } } } },

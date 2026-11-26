@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { conErroresTransitorios } from '../prisma/errores-transitorios';
 import { randomUUID } from 'crypto';
 import { PrismaPushOutboxRepository } from './prisma-push-outbox.repository';
+import { registrarAviso } from './prisma-inapp.repository';
 
 // Solo se reintenta una transacción que abandonamos explícitamente antes de escribir.
 class UbicacionCambio extends Error {}
@@ -103,9 +104,11 @@ export class PrismaTareaRepository implements TareaRepository {
     if (!nuevo || nuevo === anterior || nuevo === usuarioId) return;
     // Una identidad por cambio confirmado, no por tarea/usuario: A→B→A son eventos distintos.
     // La exclusión mutua de la tarea decide si un PATCH concurrente es realmente un cambio.
-    await new PrismaPushOutboxRepository(this.prisma).enTransaccion(tx).encolar({
+    const evento = {
       claveUnica: `asig:${randomUUID()}`, usuarioId: nuevo, tipo: 'TAREA_ASIGNADA', tareaId, comentarioId: null,
-    });
+    } as const;
+    await registrarAviso(tx, evento);
+    await new PrismaPushOutboxRepository(this.prisma).enTransaccion(tx).encolar(evento);
   }
 
   private async conUbicacionActual<T>(tareaId: string, usuarioId: string, operacion: () => Promise<T>): Promise<T> {

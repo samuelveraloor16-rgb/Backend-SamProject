@@ -11,6 +11,9 @@ function setup() {
   const tx = {
     $queryRaw: jest.fn(async () => [{ id: 't' }]),
     tarea: { findFirst: jest.fn(async () => ({ id: 't', fechaLimite: c.fechaLimite })), findMany: jest.fn(async () => [c]) },
+    identidadAviso: { createMany: jest.fn(async () => ({ count: 1 })) },
+    notificacion: { create: jest.fn(async () => ({})) },
+    preferenciaNotificacion: { findUnique: jest.fn(async (): Promise<{ inApp: boolean; push: boolean } | null> => null) },
     pushOutbox: { createMany: jest.fn(async ({ data }: { data: { claveUnica: string }[] }) => {
       const key = data[0]!.claveUnica;
       if (filas.has(key)) return { count: 0 };
@@ -51,6 +54,8 @@ describe('RF20 detector UTC sin BD ni proveedor (dobles)', () => {
     tx.tarea.findFirst.mockResolvedValue(null as never);
     expect(await repo.encolarVigente(c, ahora)).toBe(false);
     expect(tx.pushOutbox.createMany).not.toHaveBeenCalled();
+    expect(tx.identidadAviso.createMany).not.toHaveBeenCalled();
+    expect(tx.notificacion.create).not.toHaveBeenCalled();
     expect(tx.tarea.findFirst).toHaveBeenCalledWith({ where: {
       id: 't', responsableId: 'A', fechaLimite: fecha, estado: { not: 'HECHA' },
       proyecto: { archivado: false, eliminadoEn: null, espacio: { membresias: { some: { usuarioId: 'A' } } } },
@@ -62,6 +67,13 @@ describe('RF20 detector UTC sin BD ni proveedor (dobles)', () => {
     expect(tx.tarea.findFirst).not.toHaveBeenCalled();
     const strings = (tx.$queryRaw.mock.calls[0] as unknown as [TemplateStringsArray])[0];
     expect(strings.join('?')).toContain('FOR SHARE OF t, p, m');
+  });
+  it('inApp explícito genera recordatorio aunque push esté desactivado; sin comentario', async () => {
+    const { repo, c, tx } = setup();
+    tx.preferenciaNotificacion.findUnique.mockResolvedValue({ inApp: true, push: false });
+    expect(await repo.encolarVigente(c, ahora)).toBe(false); // contador histórico sigue siendo push
+    expect(tx.pushOutbox.createMany).not.toHaveBeenCalled();
+    expect(tx.notificacion.create).toHaveBeenCalledWith({ data: { usuarioId: 'A', tipo: 'TAREA_POR_VENCER', titulo: 'Tarea por vencer', cuerpo: null, tareaId: 't', comentarioId: null } });
   });
   it('escaneo keyset acotado incluye subtareas sin filtro de padre', async () => {
     const { repo, tx } = setup(); await repo.candidatos(ahora, 'previo', 5);

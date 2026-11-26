@@ -8,6 +8,8 @@ function preparar() {
   let miembros = new Set(['autor', 'responsable', ...Array.from({ length: 20 }, (_, i) => `u${i}`)]);
   let responsableId: string | null = 'responsable';
   let eventos: NuevoPush[] = [];
+  let avisos: unknown[] = [];
+  let identidades = new Set<string>();
   let comentario: any = null;
   let marcador: any = null;
   let fallo = '';
@@ -37,6 +39,12 @@ function preparar() {
       create: jest.fn(async ({ data }: any) => { if (fallo === 'marcador') throw new Error('marcador'); marcador = data; return data; }),
       update: jest.fn(), delete: jest.fn(),
     },
+    identidadAviso: { createMany: jest.fn(async ({ data }: { data: { digest: string }[] }) => {
+      if (identidades.has(data[0]!.digest)) return { count: 0 };
+      identidades.add(data[0]!.digest); return { count: 1 };
+    }) },
+    notificacion: { findFirst: jest.fn(async () => null), create: jest.fn(async ({ data }: { data: unknown }) => { avisos.push(data); return data; }) },
+    preferenciaNotificacion: { findUnique: jest.fn(async () => null) },
     pushOutbox: { createMany: jest.fn(async ({ data, skipDuplicates }: { data: NuevoPush[]; skipDuplicates: boolean }) => {
       expect(dentro).toBe(true); expect(skipDuplicates).toBe(true); expect(proveedor).not.toHaveBeenCalled();
       if (fallo === 'outbox') throw new Error('outbox');
@@ -44,13 +52,13 @@ function preparar() {
     }) },
   };
   const db = { $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => {
-    const antes = { comentario, marcador, eventos: [...eventos] }; dentro = true;
+    const antes = { comentario, marcador, eventos: [...eventos], avisos: [...avisos], identidades: new Set(identidades) }; dentro = true;
     try { return await fn(tx); }
-    catch (e) { comentario = antes.comentario; marcador = antes.marcador; eventos = antes.eventos; throw e; }
+    catch (e) { comentario = antes.comentario; marcador = antes.marcador; eventos = antes.eventos; avisos = antes.avisos; identidades = antes.identidades; throw e; }
     finally { dentro = false; }
   }) };
   return { repo: new PrismaComentariosRepository(db as unknown as PrismaService), tx, consultas, proveedor,
-    eventos: () => eventos, comentario: () => comentario, marcador: () => marcador,
+    eventos: () => eventos, avisos: () => avisos, identidades: () => [...identidades], comentario: () => comentario, marcador: () => marcador,
     configurar: (c: { miembros?: string[]; responsableId?: string | null; fallo?: string; espacioId?: string }) => {
       if (c.miembros) miembros = new Set(c.miembros);
       if (c.responsableId !== undefined) responsableId = c.responsableId;
@@ -83,6 +91,7 @@ describe('RF20 comentarios: unión durable sin autoaviso ni replay de efectos', 
   it('responsable mencionado tiene precedencia MENCION y una sola fila', async () => {
     const p = preparar(); await p.repo.crear('t', 'autor', 'x', 'k', ['responsable']);
     expect(p.eventos()).toEqual([{ claveUnica: 'com:c:responsable', usuarioId: 'responsable', tipo: 'MENCION', tareaId: 't', comentarioId: 'c' }]);
+    expect(p.avisos()).toEqual([{ usuarioId: 'responsable', tipo: 'MENCION', titulo: 'Te mencionaron', cuerpo: null, tareaId: 't', comentarioId: 'c' }]);
   });
   it.each([null, 'autor'])('sin responsable elegible adicional: %s', async responsableId => {
     const p = preparar(); p.configurar({ responsableId }); await p.repo.crear('t', 'autor', 'x', 'k', []); expect(p.eventos()).toEqual([]);
@@ -96,10 +105,11 @@ describe('RF20 comentarios: unión durable sin autoaviso ni replay de efectos', 
     await expect(p.repo.crear('t', 'autor', 'x', 'k', ['u0'])).rejects.toMatchObject({ status: 404 });
     expect(p.eventos()).toHaveLength(2); expect(p.tx.comentario.create).toHaveBeenCalledTimes(1);
   });
-  it.each(['outbox', 'marcador'])('fallo %s revierte comentario, avisos anidados, marcador y outbox en el doble', async fallo => {
+  it.each(['outbox', 'marcador'])('fallo %s revierte comentario, avisos, identidad, marcador y outbox en el doble', async fallo => {
     const p = preparar(); p.configurar({ fallo });
     await expect(p.repo.crear('t', 'autor', 'x', 'k', ['u0'])).rejects.toThrow(fallo);
     expect(p.comentario()).toBeNull(); expect(p.marcador()).toBeNull(); expect(p.eventos()).toEqual([]);
+    expect(p.avisos()).toEqual([]); expect(p.identidades()).toEqual([]);
   });
   it('responsable que perdió membresía se excluye; mencionado inválido aborta', async () => {
     const p = preparar(); p.configurar({ miembros: ['autor', 'u0'] });

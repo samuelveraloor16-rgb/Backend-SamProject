@@ -34,7 +34,11 @@ export class PrismaPushOutboxRepository implements PushOutboxRepository {
     return (await db.pushOutbox.updateMany({ where: { id, estado: 'PENDIENTE', intentos }, data: cambio })).count === 1;
   }
 
-  private async insertar(db: Pick<Prisma.TransactionClient, 'pushOutbox'>, evento: NuevoPush) {
+  private async insertar(db: Pick<Prisma.TransactionClient, 'pushOutbox' | 'preferenciaNotificacion'>, evento: NuevoPush) {
+    const preferencia = await db.preferenciaNotificacion.findUnique({
+      where: { usuarioId_tipo: { usuarioId: evento.usuarioId, tipo: evento.tipo } }, select: { push: true },
+    });
+    if (preferencia?.push === false) return false;
     // ON CONFLICT DO NOTHING (no P2002 capturado dentro de una transacción
     // PostgreSQL abortada). claveUnica no nullable deduplica incluso comentarioId NULL.
     const resultado = await db.pushOutbox.createMany({ data: [evento], skipDuplicates: true });

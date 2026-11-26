@@ -41,6 +41,9 @@ function preparar() {
       update: jest.fn(async ({ data }: { data: Partial<typeof tarea> }) => { tarea = { ...tarea, ...data }; return { ...tarea }; }),
     },
     pushOutbox: { createMany: insertar },
+    identidadAviso: { createMany: jest.fn(async () => ({ count: 1 })) },
+    notificacion: { create: jest.fn(async () => ({})) },
+    preferenciaNotificacion: { findUnique: jest.fn(async (): Promise<{ inApp: boolean; push: boolean } | null> => null) },
     tareaEtiqueta: { createMany: jest.fn(), deleteMany: jest.fn() },
   };
   const db = {
@@ -75,6 +78,13 @@ describe('RF20 asignaciones: negocio y outbox en la misma transacción', () => {
     expect(p.eventos()).toEqual([{ claveUnica: expect.stringMatching(/^asig:/), usuarioId: 'nuevo', tipo: 'TAREA_ASIGNADA', tareaId: 't', comentarioId: null }]);
     expect(p.insertar).toHaveBeenCalledWith({ data: p.eventos(), skipDuplicates: true });
     expect(p.proveedor).not.toHaveBeenCalled();
+  });
+  it('asignación inApp explícita sin push comparte identidad del cambio y no depende de dispositivos', async () => {
+    const p = preparar(); p.tx.preferenciaNotificacion.findUnique.mockResolvedValue({ inApp: true, push: false });
+    await p.repo.crear(datos, 'autor');
+    expect(p.eventos()).toEqual([]);
+    expect(p.tx.notificacion.create).toHaveBeenCalledWith({ data: { usuarioId: 'nuevo', tipo: 'TAREA_ASIGNADA', titulo: 'Tarea asignada', cuerpo: null, tareaId: 't', comentarioId: null } });
+    expect(p.tx.identidadAviso.createMany).toHaveBeenCalledTimes(1);
   });
   it.each([undefined, null, 'autor'])('creación sin autoaviso: responsable=%s', async responsableId => {
     const p = preparar(); await p.repo.crear({ ...datos, responsableId }, 'autor');

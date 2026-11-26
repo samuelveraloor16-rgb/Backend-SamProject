@@ -9,6 +9,7 @@ const f: PushAlmacenado = { id: 'o', usuarioId: 'u', tipo: 'TAREA_ASIGNADA', cla
 function setup() {
   const tarea = { proyectoId: 'p', responsableId: 'u', estado: 'PENDIENTE', fechaLimite: ahora, proyecto: { espacioId: 'e', archivado: false } };
   const tx = {
+    preferenciaNotificacion: { findUnique: jest.fn(async (): Promise<{ push: boolean } | null> => null) },
     $queryRaw: jest.fn(async () => [{ ahora }]),
     pushOutbox: { count: jest.fn(async () => 0), updateMany: jest.fn(async () => ({ count: 1 })), findFirst: jest.fn(async () => ({ id: 'o' })) },
     dispositivo: { findFirst: jest.fn(async () => ({ usuario: { tokenVersion: 2 } })), findMany: jest.fn(async () => [v]), deleteMany: jest.fn(async () => ({ count: 1 })) },
@@ -22,6 +23,24 @@ function setup() {
   return { repo, tx, db, tarea };
 }
 describe('PrismaPushDispatchRepository sin PostgreSQL', () => {
+  it.each(['TAREA_ASIGNADA', 'TAREA_POR_VENCER', 'TAREA_VENCIDA', 'COMENTARIO', 'MENCION'] as const)('silencia %s antes de reserva sin fallback', async tipo => {
+    const { repo, tx } = setup();
+    tx.preferenciaNotificacion.findUnique.mockResolvedValue({ push: false });
+    expect(await repo.revalidar({ ...f, tipo }, v)).toBeNull();
+    expect(tx.preferenciaNotificacion.findUnique).toHaveBeenCalledWith({ where: { usuarioId_tipo: { usuarioId: 'u', tipo } }, select: { push: true } });
+    expect(tx.pushIntento.create).not.toHaveBeenCalled();
+    expect(tx.comentario.findFirst).not.toHaveBeenCalled();
+  });
+  it('relee preferencia entre dispositivos y reintentos; fallo BD no autoriza', async () => {
+    const { repo, tx } = setup();
+    expect(await repo.revalidar(f, v)).not.toBeNull();
+    tx.preferenciaNotificacion.findUnique.mockResolvedValue({ push: false });
+    expect(await repo.revalidar(f, { ...v, id: 'd2' })).toBeNull();
+    expect(await repo.revalidar({ ...f, intentos: 1 }, v)).toBeNull();
+    tx.preferenciaNotificacion.findUnique.mockRejectedValue(new Error('offline'));
+    await expect(repo.revalidar(f, v)).rejects.toThrow('offline');
+    expect(tx.pushIntento.create).toHaveBeenCalledTimes(1);
+  });
   it('claim CAS con lease e incremento, serializa destinatario', async () => {
     const { repo, tx } = setup();
     expect(await repo.reclamar(f, ahora)).toBe(true);
