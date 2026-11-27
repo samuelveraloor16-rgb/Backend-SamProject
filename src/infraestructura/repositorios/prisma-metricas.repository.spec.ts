@@ -12,7 +12,7 @@ type Fila = TareaContable & { id: string; proyectoId: string; tareaPadreId: stri
 
 describe('RF22 repositorio y servicio (dobles, no SQL ni concurrencia real)', () => {
   let tareas: Fila[];
-  let proyectos: { id: string; espacioId: string; eliminadoEn: Date | null; archivado: boolean }[];
+  let proyectos: { id: string; nombre: string; espacioId: string; eliminadoEn: Date | null; archivado: boolean }[];
   let db: PrismaService;
   let findMany: jest.Mock;
   let findFirst: jest.Mock;
@@ -23,9 +23,9 @@ describe('RF22 repositorio y servicio (dobles, no SQL ni concurrencia real)', ()
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(ahora);
     proyectos = [
-      { id: 'p1', espacioId: 'e1', eliminadoEn: null, archivado: false },
-      { id: 'p2', espacioId: 'e2', eliminadoEn: null, archivado: false },
-      { id: 'destino', espacioId: 'e1', eliminadoEn: null, archivado: false },
+      { id: 'p1', nombre: 'Proyecto uno', espacioId: 'e1', eliminadoEn: null, archivado: false },
+      { id: 'p2', nombre: 'Proyecto dos', espacioId: 'e2', eliminadoEn: null, archivado: false },
+      { id: 'destino', nombre: 'Destino', espacioId: 'e1', eliminadoEn: null, archivado: false },
     ];
     tareas = [];
     findFirst = jest.fn(async ({ where }) => proyectos.find(p => p.id === where.id && p.eliminadoEn === where.eliminadoEn && (
@@ -50,10 +50,18 @@ describe('RF22 repositorio y servicio (dobles, no SQL ni concurrencia real)', ()
   });
   afterEach(() => jest.useRealTimers());
 
+  it('identificación RF23 y métricas/corte salen de una sola transacción autorizada', async () => {
+    const r = await service.obtenerResumenIdentificado('p1', 'miembro');
+    expect(r.proyecto).toMatchObject({ id: 'p1', nombre: 'Proyecto uno' });
+    expect(r.metricas).toMatchObject({ proyectoId: 'p1', calculadoEn: ahora, total: 0 });
+    expect(transaction).toHaveBeenCalledTimes(1); expect(findFirst).toHaveBeenCalledTimes(1);
+    expect(findMany).toHaveBeenCalledTimes(1);
+  });
+
   it('vacío, corte backend y selección única dentro de transacción', async () => {
     expect(await service.obtener('p1', 'miembro')).toEqual({ proyectoId: 'p1', calculadoEn: ahora, ...calcularProgreso([], ahora), trabajoPendiente: 0, ritmo: { disponible: false, motivo: 'COBERTURA_NO_ACREDITADA' } });
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(findFirst).toHaveBeenCalledWith({ where: { id: 'p1', eliminadoEn: null, espacio: { membresias: { some: { usuarioId: 'miembro' } } } }, select: { id: true } });
+    expect(findFirst).toHaveBeenCalledWith({ where: { id: 'p1', eliminadoEn: null, espacio: { membresias: { some: { usuarioId: 'miembro' } } } }, select: { id: true, nombre: true } });
     expect(findMany).toHaveBeenCalledTimes(1);
   });
   it('simples/subtareas, padre excluido y RF11 wire/porcentaje sin cambios', async () => {
@@ -113,7 +121,7 @@ describe('RF22 repositorio y servicio (dobles, no SQL ni concurrencia real)', ()
     jest.setSystemTime(antes);
     const lento = new MetricasService({ leerInstantaneaVisible: async () => {
       jest.setSystemTime(new Date(2026, 10, 27, 0, 0, 1));
-      return { calculadoEn: antes, contables: [{ estado: 'PENDIENTE', fechaLimite }, { estado: 'EN_CURSO', fechaLimite }], historial: { desde: null, coberturaAcreditada: false, grupos: [] } };
+      return { proyecto: { id: 'p1', nombre: 'Proyecto' }, calculadoEn: antes, contables: [{ estado: 'PENDIENTE', fechaLimite }, { estado: 'EN_CURSO', fechaLimite }], historial: { desde: null, coberturaAcreditada: false, grupos: [] } };
     } });
     expect(await lento.obtener('p1', 'miembro')).toMatchObject({ calculadoEn: antes, total: 2, vencidas: 0, trabajoPendiente: 2 });
   });

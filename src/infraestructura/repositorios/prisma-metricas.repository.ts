@@ -19,7 +19,7 @@ export class PrismaMetricasRepository implements MetricasRepository {
           eliminadoEn: null,
           espacio: { membresias: { some: { usuarioId } } },
         },
-        select: { id: true },
+        select: { id: true, nombre: true },
       });
       if (!proyecto) return null;
       const contables = await leerTareasContables(tx, proyecto.id);
@@ -34,7 +34,7 @@ export class PrismaMetricasRepository implements MetricasRepository {
           AND "tipo" = 'FINALIZADA' AND "contable" = true
           AND "ocurridoEn" >= ${inicio} AND "ocurridoEn" < ${calculadoEn}
         GROUP BY 1 ORDER BY 1 LIMIT 5`;
-      return { calculadoEn, contables, historial: {
+      return { proyecto, calculadoEn, contables, historial: {
         desde: frontera?.desde ?? null,
         // No hay evidencia persistida de activación continua de TODOS los escritores.
         coberturaAcreditada: false,
