@@ -10,6 +10,7 @@ import type {
   TareaContableCruda,
 } from '../../dominio/puertos/proyecto.repository';
 import { PrismaService } from '../prisma/prisma.service';
+import { leerTareasContables } from './tareas-contables';
 
 const INCLUDE_MIEMBROS = {
   miembros: { include: { usuario: { select: { id: true, nombre: true, email: true } } } },
@@ -164,16 +165,6 @@ export class PrismaProyectoRepository implements ProyectoRepository {
   }
 
   async tareasContables(proyectoId: string): Promise<TareaContableCruda[]> {
-    // Padre con subtareas no cuenta; el resto sí (RF-11).
-    const padres = await this.prisma.tarea.findMany({
-      where: { proyectoId, subtareas: { some: {} } },
-      select: { id: true },
-    });
-    const idsPadres = padres.map((p) => p.id);
-    const filas = await this.prisma.tarea.findMany({
-      where: { proyectoId, ...(idsPadres.length > 0 ? { id: { notIn: idsPadres } } : {}) },
-      select: { estado: true, fechaLimite: true },
-    });
-    return filas;
+    return leerTareasContables(this.prisma, proyectoId);
   }
 }

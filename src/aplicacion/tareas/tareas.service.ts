@@ -308,24 +308,15 @@ export class TareasService {
     return aTareaPublica(tarea);
   }
 
-  // PATCH /tareas/:id/estado — RF-14. Transiciones libres; fechaFinalizacion la gestiona el backend.
+  // PATCH /tareas/:id/estado — RF-14/RF-22. El repositorio deriva el estado anterior
+  // bajo lock, actualiza la tarea y registra FINALIZADA/REABIERTA en la misma transacción.
   async cambiarEstado(
     id: string,
     usuarioId: string,
     dto: CambiarEstadoDto,
   ): Promise<TareaPublica> {
-    const tarea = await this.exigirTareaEscribible(id, usuarioId);
-    const ahora = new Date();
-    let fechaFinalizacion: Date | null | undefined = undefined; // undefined = no tocar
-    if (dto.estado === 'HECHA') {
-      fechaFinalizacion = ahora;
-    } else if (tarea.estado === 'HECHA') {
-      fechaFinalizacion = null;
-    }
-    const actualizada = await this.tareas.actualizar(id, {
-      estado: dto.estado,
-      ...(fechaFinalizacion !== undefined ? { fechaFinalizacion } : {}),
-    }, usuarioId);
+    await this.exigirTareaEscribible(id, usuarioId);
+    const actualizada = await this.tareas.cambiarEstado(id, dto.estado, usuarioId);
     return aTareaPublica(actualizada);
   }
 

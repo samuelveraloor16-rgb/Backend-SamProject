@@ -108,6 +108,7 @@ describe('TareasService', () => {
       crear: jest.fn(),
       crearSubtareaAutorizada: jest.fn(),
       actualizar: jest.fn(),
+      cambiarEstado: jest.fn(),
       eliminar: jest.fn(),
       moverConSubtareas: jest.fn().mockResolvedValue(tarea()),
     };
@@ -294,46 +295,59 @@ describe('TareasService', () => {
     });
   });
 
-  describe('cambiarEstado (RF-14)', () => {
-    it('→ HECHA establece fechaFinalizacion en el backend', async () => {
+  describe('cambiarEstado (RF-14/RF-22)', () => {
+    it('delega la transición al repositorio transaccional, no a actualizar', async () => {
+      const finalizacion = new Date('2026-11-26T12:00:00.000Z');
       tareas.buscarPorId.mockResolvedValue(tarea({ estado: 'PENDIENTE' }));
-      tareas.actualizar.mockImplementation(async (_id, datos) => tarea({ ...datos } as Partial<TareaCompleta>));
-      const resp = await service.cambiarEstado('tar-1', 'user-1', { estado: 'HECHA' });
-      expect(tareas.actualizar).toHaveBeenCalledWith(
-        'tar-1',
-        expect.objectContaining({ estado: 'HECHA', fechaFinalizacion: expect.any(Date) }),
-        'user-1',
+      tareas.cambiarEstado.mockResolvedValue(
+        tarea({ estado: 'HECHA', fechaFinalizacion: finalizacion }),
       );
-      expect(resp.estado).toBe('HECHA');
+      const resp = await service.cambiarEstado('tar-1', 'user-1', { estado: 'HECHA' });
+      expect(tareas.cambiarEstado).toHaveBeenCalledWith('tar-1', 'HECHA', 'user-1');
+      expect(tareas.actualizar).not.toHaveBeenCalled();
+      expect(resp).toMatchObject({ estado: 'HECHA', fechaFinalizacion: finalizacion });
     });
 
-    it('salir de HECHA limpia fechaFinalizacion', async () => {
+    it('salir de HECHA delega la reapertura y conserva el shape público', async () => {
       tareas.buscarPorId.mockResolvedValue(
         tarea({ estado: 'HECHA', fechaFinalizacion: new Date() }),
       );
-      tareas.actualizar.mockImplementation(async (_id, datos) => tarea({ ...datos } as Partial<TareaCompleta>));
-      await service.cambiarEstado('tar-1', 'user-1', { estado: 'EN_CURSO' });
-      expect(tareas.actualizar).toHaveBeenCalledWith(
-        'tar-1',
-        expect.objectContaining({ estado: 'EN_CURSO', fechaFinalizacion: null }),
-        'user-1',
+      tareas.cambiarEstado.mockResolvedValue(
+        tarea({ estado: 'EN_CURSO', fechaFinalizacion: null }),
       );
+      const resp = await service.cambiarEstado('tar-1', 'user-1', { estado: 'EN_CURSO' });
+      expect(tareas.cambiarEstado).toHaveBeenCalledWith('tar-1', 'EN_CURSO', 'user-1');
+      expect(resp.fechaFinalizacion).toBeNull();
+    });
+
+    it('HECHA repetida se delega; el repositorio decide el no-op sin reescribir la fecha', async () => {
+      const original = new Date('2026-11-20T08:00:00.000Z');
+      tareas.buscarPorId.mockResolvedValue(
+        tarea({ estado: 'HECHA', fechaFinalizacion: original }),
+      );
+      tareas.cambiarEstado.mockResolvedValue(
+        tarea({ estado: 'HECHA', fechaFinalizacion: original }),
+      );
+      const resp = await service.cambiarEstado('tar-1', 'user-1', { estado: 'HECHA' });
+      expect(tareas.cambiarEstado).toHaveBeenCalledWith('tar-1', 'HECHA', 'user-1');
+      expect(resp.fechaFinalizacion).toBe(original);
     });
 
     it('transición DISPARADA: PENDIENTE → HECHA está permitida (orden de UI, no restricción)', async () => {
       tareas.buscarPorId.mockResolvedValue(tarea({ estado: 'PENDIENTE' }));
-      tareas.actualizar.mockImplementation(async (_id, datos) => tarea({ ...datos } as Partial<TareaCompleta>));
+      tareas.cambiarEstado.mockResolvedValue(tarea({ estado: 'HECHA' }));
       await expect(
         service.cambiarEstado('tar-1', 'user-1', { estado: 'HECHA' }),
       ).resolves.toBeDefined();
     });
 
-    it('400 si el proyecto está archivado', async () => {
+    it('400 si el proyecto está archivado, sin invocar al repositorio', async () => {
       tareas.buscarPorId.mockResolvedValue(tarea());
       proyectos.buscarPorId.mockResolvedValue(proyecto({ archivado: true }));
       await expect(
         service.cambiarEstado('tar-1', 'user-1', { estado: 'EN_CURSO' }),
       ).rejects.toBeInstanceOf(BadRequestException);
+      expect(tareas.cambiarEstado).not.toHaveBeenCalled();
     });
   });
 

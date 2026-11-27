@@ -11,11 +11,13 @@ import type {
   RangoCalendarioConsulta,
 } from '../../dominio/puertos/tarea.repository';
 import { inicioDelDia } from '../../dominio/metricas/progreso';
+import { resolverTransicion } from '../../dominio/metricas/historial-finalizaciones';
 import { PrismaService } from '../prisma/prisma.service';
 import { conErroresTransitorios } from '../prisma/errores-transitorios';
 import { randomUUID } from 'crypto';
 import { PrismaPushOutboxRepository } from './prisma-push-outbox.repository';
 import { registrarAviso } from './prisma-inapp.repository';
+import { registrarEventoFinalizacion } from './prisma-eventos-finalizacion';
 
 // Solo se reintenta una transacción que abandonamos explícitamente antes de escribir.
 class UbicacionCambio extends Error {}
@@ -251,8 +253,6 @@ export class PrismaTareaRepository implements TareaRepository {
       if (datos.prioridad !== undefined) data.prioridad = datos.prioridad;
       if (datos.fechaLimite !== undefined) data.fechaLimite = datos.fechaLimite;
       if (datos.responsableId !== undefined) data.responsableId = datos.responsableId;
-      if (datos.estado !== undefined) data.estado = datos.estado;
-      if (datos.fechaFinalizacion !== undefined) data.fechaFinalizacion = datos.fechaFinalizacion;
 
       if (Object.keys(data).length > 0) {
         await tx.tarea.update({ where: { id }, data });
@@ -271,6 +271,60 @@ export class PrismaTareaRepository implements TareaRepository {
         where: { id },
         include: INCLUDE_COMPLETA,
       });
+      return aCompleta(completa as unknown as FilaCompleta);
+    }));
+  }
+
+  cambiarEstado(id: string, estado: EstadoTarea, usuarioId: string): Promise<TareaCompleta> {
+    return this.conUbicacionActual(id, usuarioId, () => this.prisma.$transaction(async (tx) => {
+      const inicial = await tx.tarea.findUnique({ where: { id }, select: { proyectoId: true } });
+      if (!inicial) throw new NotFoundException('Tarea no encontrada');
+      const proyectos = await tx.$queryRaw<{ espacioId: string; archivado: boolean }[]>`SELECT "espacioId", "archivado" FROM "proyectos" WHERE "id" = ${inicial.proyectoId} FOR SHARE`;
+      if (!proyectos[0]) throw new NotFoundException('Tarea no encontrada');
+      const filas = await tx.$queryRaw<{ proyectoId: string; estado: EstadoTarea }[]>`SELECT "proyectoId", "estado" FROM "tareas" WHERE "id" = ${id} FOR UPDATE`;
+      if (!filas[0]) throw new NotFoundException('Tarea no encontrada');
+      await this.autorizar(tx, proyectos[0].espacioId, usuarioId);
+      if (filas[0].proyectoId !== inicial.proyectoId) throw new UbicacionCambio();
+      if (proyectos[0].archivado) throw new BadRequestException('El proyecto está archivado');
+
+      const estadoAnterior = filas[0].estado;
+      const efecto = resolverTransicion(estadoAnterior, estado);
+      if (efecto.tipo === null && estadoAnterior === estado) {
+        // HECHA→HECHA (y cualquier mismo estado): no se escribe ni se registra nada.
+        const actual = await tx.tarea.findUnique({ where: { id }, include: INCLUDE_COMPLETA });
+        return aCompleta(actual as unknown as FilaCompleta);
+      }
+
+      // Fotografía RF11 bajo el lock del padre: las altas de subtareas necesitan
+      // ese mismo FOR UPDATE y los borrados esperan al FOR SHARE de las hijas.
+      const hijos = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "tareas" WHERE "tareaPadreId" = ${id} ORDER BY "id" FOR SHARE`;
+
+      let ocurridoEn: Date | null = null;
+      if (efecto.tipo !== null) {
+        const reloj = await tx.$queryRaw<{ ahora: Date }[]>`SELECT clock_timestamp() AS "ahora"`;
+        ocurridoEn = reloj[0]!.ahora;
+      }
+
+      const data: Prisma.TareaUpdateInput = { estado };
+      if (efecto.fechaFinalizacion === 'ESTABLECER') data.fechaFinalizacion = ocurridoEn!;
+      if (efecto.fechaFinalizacion === 'LIMPIAR') data.fechaFinalizacion = null;
+      await tx.tarea.update({ where: { id }, data });
+
+      if (efecto.tipo !== null && ocurridoEn !== null) {
+        // Misma transacción: si el registro falla, el UPDATE anterior revierte.
+        await registrarEventoFinalizacion(tx, {
+          tareaId: id,
+          proyectoId: filas[0].proyectoId,
+          estadoAnterior,
+          estadoNuevo: estado,
+          tipo: efecto.tipo,
+          usuarioId,
+          contable: hijos.length === 0,
+          ocurridoEn,
+        });
+      }
+
+      const completa = await tx.tarea.findUnique({ where: { id }, include: INCLUDE_COMPLETA });
       return aCompleta(completa as unknown as FilaCompleta);
     }));
   }

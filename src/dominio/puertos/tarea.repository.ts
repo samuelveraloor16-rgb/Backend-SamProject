@@ -59,14 +59,14 @@ export interface DatosCrearTarea {
   etiquetasIds: string[];
 }
 
+/** Actualización genérica: NO puede cambiar `estado` ni `fechaFinalizacion`.
+ * Esas columnas solo se modifican por `cambiarEstado`, junto con su evento RF22. */
 export interface DatosActualizarTarea {
   titulo?: string | null;
   descripcion?: string | null;
   prioridad?: PrioridadTarea;
   fechaLimite?: Date | null;
   responsableId?: string | null;
-  estado?: EstadoTarea;
-  fechaFinalizacion?: Date | null;
   etiquetasIds?: string[]; // reemplaza el conjunto completo
 }
 
@@ -80,6 +80,12 @@ export interface TareaRepository {
   crear(datos: DatosCrearTarea, usuarioId: string): Promise<TareaCompleta>;
   crearSubtareaAutorizada(datos: DatosCrearTarea, usuarioId: string): Promise<TareaCompleta>;
   actualizar(id: string, datos: DatosActualizarTarea, usuarioId: string): Promise<TareaCompleta>;
+  /**
+   * RF-14/RF-22: cambia el estado y, si hay transición real hacia/desde HECHA,
+   * registra el evento en la misma transacción. Deriva el estado anterior con la
+   * fila bloqueada, para que PATCH concurrentes no dupliquen ni inventen eventos.
+   */
+  cambiarEstado(id: string, estado: EstadoTarea, usuarioId: string): Promise<TareaCompleta>;
   /** Borra la tarea y sus subtareas (cascada). */
   eliminar(id: string): Promise<void>;
   /** Mueve la tarea y sus subtareas al proyecto destino (mismo espacio, validado en servicio). */

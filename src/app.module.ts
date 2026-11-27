@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MetricasModule } from './infraestructura/metricas/metricas.module';
 import { PreferenciasController } from './interfaces/http/preferencias.controller';
 import { PreferenciasService } from './aplicacion/perfil/preferencias.service';
 import { PREFERENCIAS_REPOSITORY } from './dominio/puertos/preferencias.repository';
@@ -63,6 +64,7 @@ import { MAILER } from './dominio/puertos/mailer.port';
       }),
     }),
     PrismaModule,
+    MetricasModule,
     PushPersistenceModule,
     PushSchedulingModule,
   ],

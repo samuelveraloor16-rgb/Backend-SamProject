@@ -48,6 +48,12 @@ enum PrioridadTarea {
   URGENTE
 }
 
+/// RF22 historial: tipo de transición real registrada. HECHA→HECHA no genera evento.
+enum TipoEventoFinalizacion {
+  FINALIZADA
+  REABIERTA
+}
+
 enum TipoNotificacion {
   TAREA_ASIGNADA
   TAREA_POR_VENCER
@@ -221,6 +227,35 @@ model Tarea {
   @@index([responsableId])
   @@index([tareaPadreId])
   @@map("tareas")
+}
+
+/// RF22 historial de finalizaciones: fotografía inmutable y append-only.
+/// Sin FK ni cascadas: sobrevive al borrado físico de tarea/proyecto y al movimiento.
+/// `proyectoId` es el proyecto en el instante del evento; `ocurridoEn` usa reloj PostgreSQL.
+model EventoFinalizacionTarea {
+  id             String                @id @default(cuid())
+  tareaId        String
+  proyectoId     String
+  estadoAnterior EstadoTarea
+  estadoNuevo    EstadoTarea
+  tipo           TipoEventoFinalizacion
+  usuarioId      String
+  /// Regla RF11 en el instante del evento: true si la tarea no tenía subtareas.
+  contable       Boolean
+  ocurridoEn     DateTime              @default(now()) @db.Timestamptz(3)
+
+  @@index([proyectoId, ocurridoEn])
+  @@index([tareaId, ocurridoEn])
+  @@map("eventos_finalizacion_tarea")
+}
+
+/// RF22 historial: frontera de inicio fijada al aplicar la migración. Una sola fila.
+/// Permite distinguir «sin datos» de «cero finalizaciones» en semanas anteriores.
+model FronteraHistorialFinalizaciones {
+  id    Int      @id
+  desde DateTime @db.Timestamptz(3)
+
+  @@map("frontera_historial_finalizaciones")
 }
 
 model Etiqueta {
