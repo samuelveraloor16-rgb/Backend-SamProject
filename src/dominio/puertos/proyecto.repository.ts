@@ -58,13 +58,13 @@ export interface ProyectoRepository {
   buscarPorId(id: string): Promise<ProyectoConMiembros | null>;
   /** IDs del conjunto dado que son miembros del espacio (para validar pertenencia). */
   filtrarIdsMiembrosDelEspacio(espacioId: string, usuarioIds: string[]): Promise<string[]>;
-  crear(datos: DatosCrearProyecto): Promise<ProyectoConMiembros>;
-  actualizar(id: string, datos: DatosActualizarProyecto): Promise<ProyectoConMiembros>;
+  crear(datos: DatosCrearProyecto, usuarioId: string): Promise<ProyectoConMiembros>;
+  actualizar(id: string, datos: DatosActualizarProyecto, usuarioId: string): Promise<ProyectoConMiembros>;
   actualizarAutorizado(id: string, usuarioId: string, datos: DatosActualizarProyecto, miembrosIds?: string[]): Promise<ProyectoConMiembros>;
   /** Reemplaza el conjunto completo de miembros del proyecto. */
-  reemplazarMiembros(proyectoId: string, usuarioIds: string[]): Promise<void>;
+  reemplazarMiembros(proyectoId: string, usuarioIds: string[], actorId: string): Promise<void>;
   /** Borrado físico en cascada (tareas, subtareas, comentarios, adjuntos) vía ON DELETE CASCADE del schema. */
-  eliminar(id: string): Promise<void>;
+  eliminar(id: string, usuarioId: string): Promise<void>;
   obtenerBandeja(espacioId: string): Promise<ProyectoEntity | null>;
   tareasContables(proyectoId: string): Promise<TareaContableCruda[]>;
 }

@@ -85,6 +85,7 @@ describe('ProyectosService', () => {
       const resp = await service.crear('esp-1', 'user-1', { nombre: 'Lanzamiento Q1' });
       expect(proyectos.crear).toHaveBeenCalledWith(
         expect.objectContaining({ miembrosIds: ['user-1'], espacioId: 'esp-1' }),
+        'user-1',
       );
       expect(resp.progreso).toBe(0);
     });
@@ -95,6 +96,7 @@ describe('ProyectosService', () => {
       await service.crear('esp-1', 'user-1', { nombre: 'X', miembros: ['user-1', 'user-2', 'user-2'] });
       expect(proyectos.crear).toHaveBeenCalledWith(
         expect.objectContaining({ miembrosIds: ['user-1', 'user-2'] }),
+        'user-1',
       );
     });
 
@@ -147,7 +149,7 @@ describe('ProyectosService', () => {
       proyectos.buscarPorId.mockResolvedValue(proyecto());
       espacios.obtenerMembresia.mockResolvedValue(membresia({ rol: 'ADMINISTRADOR' }));
       await service.eliminar('proy-1', 'user-1');
-      expect(proyectos.eliminar).toHaveBeenCalledWith('proy-1');
+      expect(proyectos.eliminar).toHaveBeenCalledWith('proy-1', 'user-1');
     });
   });
 

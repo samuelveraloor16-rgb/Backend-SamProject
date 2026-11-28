@@ -18,6 +18,8 @@ import { randomUUID } from 'crypto';
 import { PrismaPushOutboxRepository } from './prisma-push-outbox.repository';
 import { registrarAviso } from './prisma-inapp.repository';
 import { registrarEventoFinalizacion } from './prisma-eventos-finalizacion';
+import { appendHistorial } from './prisma-historial-append';
+import { camposModificados } from '../../dominio/historial/detalle';
 
 // Solo se reintenta una transacción que abandonamos explícitamente antes de escribir.
 class UbicacionCambio extends Error {}
@@ -182,6 +184,7 @@ export class PrismaTareaRepository implements TareaRepository {
   }
 
   crear(datos: DatosCrearTarea, usuarioId: string): Promise<TareaCompleta> {
+    if (datos.tareaPadreId) return this.crearSubtareaAutorizada(datos, usuarioId);
     return this.prisma.$transaction(async (tx) => {
       const proyectos = await tx.$queryRaw<{ espacioId: string; archivado: boolean }[]>`SELECT "espacioId", "archivado" FROM "proyectos" WHERE "id" = ${datos.proyectoId} FOR SHARE`;
       if (!proyectos[0]) throw new NotFoundException('Proyecto no encontrado');
@@ -205,6 +208,7 @@ export class PrismaTareaRepository implements TareaRepository {
         });
       }
       await this.encolarAsignacion(tx, creada.id, null, datos.responsableId, usuarioId);
+      await appendHistorial(tx, { entidad: 'TAREA', entidadId: creada.id, tareaId: creada.id, proyectoId: datos.proyectoId, espacioId: proyectos[0].espacioId, usuarioId }, 'CREADO');
       const completa = await tx.tarea.findUnique({
         where: { id: creada.id },
         include: INCLUDE_COMPLETA,
@@ -231,8 +235,10 @@ export class PrismaTareaRepository implements TareaRepository {
       if (padres[0].tareaPadreId !== null) throw new BadRequestException('Las subtareas no pueden tener subtareas');
       if (datos.responsableId && !ids.has(datos.responsableId)) throw new BadRequestException('El responsable no es miembro del espacio');
       const creada = await tx.tarea.create({ data: { titulo: datos.titulo, descripcion: datos.descripcion ?? null, prioridad: datos.prioridad, fechaLimite: datos.fechaLimite ?? null, responsableId: datos.responsableId ?? null, proyectoId: inicial.proyectoId, tareaPadreId: datos.tareaPadreId }, include: INCLUDE_COMPLETA });
+      if (datos.etiquetasIds.length) await tx.tareaEtiqueta.createMany({ data: datos.etiquetasIds.map(etiquetaId => ({ tareaId: creada.id, etiquetaId })), skipDuplicates: true });
+      await appendHistorial(tx, { entidad: 'TAREA', entidadId: creada.id, tareaId: creada.id, proyectoId: inicial.proyectoId, espacioId: proyectos[0].espacioId, usuarioId }, 'CREADO');
       await this.encolarAsignacion(tx, creada.id, null, datos.responsableId, usuarioId);
-      return aCompleta(creada as FilaCompleta);
+      return aCompleta((datos.etiquetasIds.length ? await tx.tarea.findUniqueOrThrow({ where: { id: creada.id }, include: INCLUDE_COMPLETA }) : creada) as FilaCompleta);
     }));
   }
 
@@ -247,6 +253,9 @@ export class PrismaTareaRepository implements TareaRepository {
       await this.autorizar(tx, proyectos[0].espacioId, usuarioId, datos.responsableId);
       if (filas[0].proyectoId !== inicial.proyectoId) throw new UbicacionCambio();
       if (proyectos[0].archivado) throw new BadRequestException('El proyecto está archivado');
+      const anterior = await tx.tarea.findUniqueOrThrow({ where: { id }, include: { etiquetas: true } });
+      const cambios = camposModificados({ ...anterior, etiquetas: anterior.etiquetas.map(e => e.etiquetaId) }, { ...datos, titulo: datos.titulo ?? undefined, ...(datos.etiquetasIds === undefined ? {} : { etiquetas: datos.etiquetasIds }) });
+      if (!cambios.length) return aCompleta(await tx.tarea.findUniqueOrThrow({ where: { id }, include: INCLUDE_COMPLETA }) as FilaCompleta);
       const data: Record<string, unknown> = {};
       if (datos.titulo !== undefined && datos.titulo !== null) data.titulo = datos.titulo;
       if (datos.descripcion !== undefined) data.descripcion = datos.descripcion;
@@ -258,6 +267,7 @@ export class PrismaTareaRepository implements TareaRepository {
         await tx.tarea.update({ where: { id }, data });
       }
       await this.encolarAsignacion(tx, id, filas[0].responsableId, datos.responsableId, usuarioId);
+      if (cambios.length) await appendHistorial(tx, { entidad: 'TAREA', entidadId: id, tareaId: id, proyectoId: inicial.proyectoId, espacioId: proyectos[0].espacioId, usuarioId }, 'EDITADO', { changedFields: cambios });
       if (datos.etiquetasIds !== undefined) {
         await tx.tareaEtiqueta.deleteMany({ where: { tareaId: id } });
         if (datos.etiquetasIds.length > 0) {
@@ -310,6 +320,8 @@ export class PrismaTareaRepository implements TareaRepository {
       if (efecto.fechaFinalizacion === 'LIMPIAR') data.fechaFinalizacion = null;
       await tx.tarea.update({ where: { id }, data });
 
+      await appendHistorial(tx, { entidad: 'TAREA', entidadId: id, tareaId: id, proyectoId: inicial.proyectoId, espacioId: proyectos[0].espacioId, usuarioId }, 'ESTADO_CAMBIADO', { estadoAnterior, estadoNuevo: estado });
+
       if (efecto.tipo !== null && ocurridoEn !== null) {
         // Misma transacción: si el registro falla, el UPDATE anterior revierte.
         await registrarEventoFinalizacion(tx, {
@@ -329,9 +341,23 @@ export class PrismaTareaRepository implements TareaRepository {
     }));
   }
 
-  async eliminar(id: string): Promise<void> {
+  async eliminar(id: string, usuarioId: string): Promise<void> {
     // ON DELETE CASCADE: subtareas (tareaPadreId), comentarios, adjuntos, tarea_etiquetas.
-    await this.prisma.tarea.delete({ where: { id } });
+    await this.conUbicacionActual(id, usuarioId, () => this.prisma.$transaction(async tx => {
+      const inicial = await tx.tarea.findUnique({ where: { id }, select: { proyectoId: true } });
+      if (!inicial) throw new NotFoundException('Tarea no encontrada');
+      const proyectos = await tx.$queryRaw<{espacioId: string; archivado: boolean}[]>`SELECT "espacioId", "archivado" FROM "proyectos" WHERE "id" = ${inicial.proyectoId} FOR SHARE`;
+      if (!proyectos[0]) throw new NotFoundException('Tarea no encontrada');
+      const filas = await tx.$queryRaw<{proyectoId: string}[]>`SELECT "proyectoId" FROM "tareas" WHERE "id" = ${id} FOR UPDATE`;
+      if (!filas[0]) throw new NotFoundException('Tarea no encontrada');
+      await this.autorizar(tx, proyectos[0].espacioId, usuarioId);
+      if (filas[0].proyectoId !== inicial.proyectoId) throw new UbicacionCambio();
+      if (proyectos[0].archivado) throw new BadRequestException('El proyecto está archivado');
+      const hijos = await tx.$queryRaw<{id: string; proyectoId: string}[]>`SELECT "id", "proyectoId" FROM "tareas" WHERE "tareaPadreId" = ${id} ORDER BY "id" FOR UPDATE`;
+      if (hijos.some(h => h.proyectoId !== inicial.proyectoId)) throw new BadRequestException('Contexto de tarea no verificable');
+      for (const tareaId of [id, ...hijos.map(t => t.id)]) await appendHistorial(tx, { entidad: 'TAREA', entidadId: tareaId, tareaId, proyectoId: inicial.proyectoId, espacioId: proyectos[0].espacioId, usuarioId }, 'ELIMINADO');
+      await tx.tarea.delete({ where: { id } });
+    }));
   }
 
   async moverConSubtareas(tareaId: string, destinoProyectoId: string, usuarioId: string): Promise<TareaCompleta> {
@@ -358,6 +384,9 @@ export class PrismaTareaRepository implements TareaRepository {
       if (origen.archivado || destino.archivado) throw new BadRequestException('El proyecto está archivado');
       if (inicial.proyectoId !== destinoProyectoId) {
         if (filas[0].tareaPadreId !== null) throw new BadRequestException('No se puede mover una subtarea independientemente');
+        const hijos = await tx.$queryRaw<{id: string; proyectoId: string}[]>`SELECT "id", "proyectoId" FROM "tareas" WHERE "tareaPadreId" = ${tareaId} ORDER BY "id" FOR UPDATE`;
+        if (hijos.some(h => h.proyectoId !== inicial.proyectoId)) throw new BadRequestException('Contexto de tarea no verificable');
+        for (const id of [tareaId, ...hijos.map(t => t.id)]) await appendHistorial(tx, { entidad: 'TAREA', entidadId: id, tareaId: id, proyectoId: inicial.proyectoId, espacioId: origen.espacioId, usuarioId, proyectoOrigenId: inicial.proyectoId, proyectoDestinoId: destinoProyectoId }, 'MOVIDO');
         await tx.tarea.update({ where: { id: tareaId }, data: { proyectoId: destinoProyectoId } });
         await tx.tarea.updateMany({ where: { tareaPadreId: tareaId }, data: { proyectoId: destinoProyectoId } });
       }

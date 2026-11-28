@@ -77,6 +77,7 @@ function preparar() {
 
   const crearTx = () => {
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       tarea: {
         findUnique: jest.fn(async (args: { where: { id: string }; select?: unknown; include?: unknown }) => {
           const fila = buscar(args.where.id);

@@ -269,7 +269,7 @@ export class TareasService {
   // DELETE /tareas/:id — RF-12. Borra la tarea y sus subtareas (cascada).
   async eliminar(id: string, usuarioId: string): Promise<void> {
     await this.exigirTareaEscribible(id, usuarioId);
-    await this.tareas.eliminar(id);
+    await this.tareas.eliminar(id, usuarioId);
   }
 
   // POST /tareas/:id/subtareas — RF-12. Un solo nivel de anidación.

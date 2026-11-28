@@ -7,6 +7,8 @@ import { ExpoPushProvider } from '../push/expo-push.provider';
 function preparar() {
   let tarea = { id: 't', proyectoId: 'p', responsableId: 'anterior' as string | null, tareaPadreId: null as string | null, etiquetas: [], _count: { subtareas: 0 } };
   let outbox: NuevoPush[] = [];
+  let generales: string[] = [];
+  let falloHistorial = false;
   let archivado = false;
   let miembros = ['autor', 'nuevo', 'anterior'];
   let fallo = false;
@@ -24,6 +26,12 @@ function preparar() {
     return { count: nuevas.length };
   });
   const tx = {
+    $executeRaw: jest.fn(async (_sql: TemplateStringsArray, ...valores: unknown[]) => {
+      expect(dentro).toBe(true);
+      if (falloHistorial) throw new Error('historial');
+      generales.push(String(valores[3]));
+      return 1;
+    }),
     $queryRaw: jest.fn(async (sql: TemplateStringsArray) => {
       const texto = sql.join('?');
       consultas.push(texto);
@@ -33,6 +41,7 @@ function preparar() {
       return [{ id: 'usuario' }];
     }),
     tarea: {
+      findUniqueOrThrow: jest.fn(async () => ({ ...tarea })),
       findUnique: jest.fn(async ({ select }: { select?: unknown }) => {
         if (!select && falloLectura) throw new Error('lectura');
         return { ...tarea };
@@ -49,10 +58,10 @@ function preparar() {
   const db = {
     $transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => {
       const resultado = cola.then(async () => {
-        const antes = { ...tarea }; const eventos = [...outbox];
+        const antes = { ...tarea }; const eventos = [...outbox]; const historial = [...generales];
         dentro = true;
         try { return await fn(tx); }
-        catch (error) { tarea = antes; outbox = eventos; throw error; }
+        catch (error) { tarea = antes; outbox = eventos; generales = historial; throw error; }
         finally { dentro = false; }
       });
       cola = resultado.then(() => undefined, () => undefined);
@@ -61,10 +70,11 @@ function preparar() {
   };
   return {
     repo: new PrismaTareaRepository(db as unknown as PrismaService), tx, db, insertar, proveedor, consultas,
-    eventos: () => outbox, tarea: () => tarea,
-    configurar: (config: { archivado?: boolean; miembros?: string[]; fallo?: boolean; falloLectura?: boolean }) => {
+    eventos: () => outbox, tarea: () => tarea, generales: () => generales,
+    configurar: (config: { archivado?: boolean; miembros?: string[]; fallo?: boolean; falloLectura?: boolean; falloHistorial?: boolean }) => {
       archivado = config.archivado ?? archivado; miembros = config.miembros ?? miembros;
       fallo = config.fallo ?? fallo; falloLectura = config.falloLectura ?? falloLectura;
+      falloHistorial = config.falloHistorial ?? falloHistorial;
     },
   };
 }
@@ -139,6 +149,13 @@ describe('RF20 asignaciones: negocio y outbox en la misma transacción', () => {
     const p = preparar(); p.configurar({ falloLectura: true });
     await expect(p.repo.actualizar('t', { responsableId: 'nuevo' }, 'autor')).rejects.toThrow('lectura');
     expect(p.tarea().responsableId).toBe('anterior'); expect(p.eventos()).toHaveLength(0);
+    expect(p.generales()).toHaveLength(0);
+  });
+  it('fallo de auditoría revierte asignación y outbox ya encolado', async () => {
+    const p = preparar(); p.configurar({ falloHistorial: true });
+    await expect(p.repo.actualizar('t', { responsableId: 'nuevo' }, 'autor')).rejects.toThrow('historial');
+    expect(p.tarea().responsableId).toBe('anterior'); expect(p.eventos()).toHaveLength(0);
+    expect(p.generales()).toHaveLength(0);
   });
   it.each(['nuevo', 'autor'])('subtarea incluye asignación, sin autoaviso: %s', async responsableId => {
     const p = preparar();

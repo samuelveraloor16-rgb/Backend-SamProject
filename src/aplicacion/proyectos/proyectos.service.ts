@@ -118,7 +118,7 @@ export class ProyectosService {
       fechaFin,
       espacioId,
       miembrosIds,
-    });
+    }, usuarioId);
     return this.publicoDe(creado);
   }
 
@@ -169,7 +169,7 @@ export class ProyectosService {
     if (p.esBandejaDeEntrada) {
       throw new BadRequestException('La Bandeja de entrada no se puede eliminar');
     }
-    await this.proyectos.eliminar(id);
+    await this.proyectos.eliminar(id, usuarioId);
   }
 
   // POST /proyectos/:id/archivar — RF-09. Miembro del espacio. Bandeja no archivable.
@@ -182,7 +182,7 @@ export class ProyectosService {
     if (p.esBandejaDeEntrada) {
       throw new BadRequestException('La Bandeja de entrada no se puede archivar');
     }
-    const actualizado = await this.proyectos.actualizar(id, { archivado: dto.archivado });
+    const actualizado = await this.proyectos.actualizar(id, { archivado: dto.archivado }, usuarioId);
     return this.publicoDe(actualizado);
   }
 

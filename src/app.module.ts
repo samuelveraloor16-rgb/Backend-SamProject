@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { HistorialController } from './interfaces/http/historial.controller';
+import { HISTORIAL_REPOSITORY } from './dominio/puertos/historial.repository';
+import { PrismaHistorialRepository } from './infraestructura/historial/prisma-historial.repository';
 import { MetricasModule } from './infraestructura/metricas/metricas.module';
 import { PreferenciasController } from './interfaces/http/preferencias.controller';
 import { PreferenciasService } from './aplicacion/perfil/preferencias.service';
@@ -68,8 +71,9 @@ import { MAILER } from './dominio/puertos/mailer.port';
     PushPersistenceModule,
     PushSchedulingModule,
   ],
-  controllers: [AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController, DispositivosController, PreferenciasController],
+  controllers: [HistorialController, AuthController, PerfilController, EspaciosController, InvitacionesController, ProyectosController, TareasController, EtiquetasController, ComentariosController, DispositivosController, PreferenciasController],
   providers: [
+    { provide: HISTORIAL_REPOSITORY, useClass: PrismaHistorialRepository },
     PreferenciasService,
     { provide: PREFERENCIAS_REPOSITORY, useClass: PrismaPreferenciasRepository },
     AuthService,

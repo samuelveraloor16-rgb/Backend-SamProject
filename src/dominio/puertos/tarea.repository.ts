@@ -87,7 +87,7 @@ export interface TareaRepository {
    */
   cambiarEstado(id: string, estado: EstadoTarea, usuarioId: string): Promise<TareaCompleta>;
   /** Borra la tarea y sus subtareas (cascada). */
-  eliminar(id: string): Promise<void>;
+  eliminar(id: string, usuarioId: string): Promise<void>;
   /** Mueve la tarea y sus subtareas al proyecto destino (mismo espacio, validado en servicio). */
   moverConSubtareas(tareaId: string, destinoProyectoId: string, usuarioId: string): Promise<TareaCompleta>;
 }

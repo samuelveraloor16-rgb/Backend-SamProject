@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { appendHistorial } from './prisma-historial-append';
 import type {
   EspacioRepository,
   EspacioEntity,
@@ -88,9 +89,10 @@ export class PrismaEspacioRepository implements EspacioRepository {
       await tx.membresia.create({
         data: { usuarioId: datos.creadorId, espacioId: nuevo.id, rol: 'ADMINISTRADOR' },
       });
-      await tx.proyecto.create({
+      const bandeja = await tx.proyecto.create({
         data: { nombre: 'Bandeja de entrada', esBandejaDeEntrada: true, espacioId: nuevo.id },
       });
+      await appendHistorial(tx, { entidad: 'PROYECTO', entidadId: bandeja.id, proyectoId: bandeja.id, espacioId: nuevo.id, usuarioId: datos.creadorId }, 'CREADO');
       return nuevo;
     });
     return aEspacio(espacio);

@@ -379,11 +379,25 @@ model RegistroDeCambios {
   detalle   Json?
   usuarioId String?
   creadoEn  DateTime @default(now())
+  /// Null identifica legacy NO acreditado; nunca backfill inferido.
+  versionHistorial Int?
+  actorTipo String?
+  /// Contexto durable, no FK ni evidencia de autorización.
+  espacioId String?
+  proyectoId String?
+  tareaId String?
+  proyectoOrigenId String?
+  proyectoDestinoId String?
 
   usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
   @@index([entidad, entidadId])
   @@index([usuarioId])
+  @@index([espacioId, proyectoId, creadoEn, id], map: "historial_proyecto_keyset")
+  @@index([espacioId, tareaId, creadoEn, id], map: "historial_tarea_keyset")
+  @@index([espacioId, proyectoOrigenId, creadoEn, id], map: "historial_origen_keyset")
+  @@index([espacioId, proyectoDestinoId, creadoEn, id], map: "historial_destino_keyset")
+  @@index([creadoEn], map: "historial_retencion")
   @@map("registro_de_cambios")
 }
 
